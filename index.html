@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Fitworld | Home</title>
+  <link rel="stylesheet" href="styles.css">
+  <script src="script.js" defer></script>
+</head>
+<body>
+  <header>
+    <h1>Fitworld</h1>
+    <p>Your food and workout log.</p>
+  </header>
+
+  <main>
+    <h2>Home</h2>
+    <section aria-labelledby="food-heading">
+      <h3 id="food-heading">Food log</h3>
+      <p>Add a food and its calories. This demo clears when you refresh.</p>
+      <form id="food-form">
+        <label for="food-name">Food name</label>
+        <input id="food-name" type="text" placeholder="e.g. Oatmeal" maxlength="80" required>
+        <label for="food-calories">Calories (kcal)</label>
+        <input id="food-calories" type="number" placeholder="e.g. 150" min="0" step="1" required>
+        <button type="submit">Add food</button>
+      </form>
+      <p id="food-empty">No food logged yet.</p>
+      <ul id="food-list"></ul>
+      <p role="status">Total calories: <strong id="calorie-total">0</strong> kcal</p>
+    </section>
+
+    <section aria-labelledby="workout-heading">
+      <h3 id="workout-heading">Workout log</h3>
+      <p>No workouts logged yet. Workout logging is coming next.</p>
+    </section>
+  </main>
+</body>
+</html>
