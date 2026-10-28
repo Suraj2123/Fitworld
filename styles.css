@@ -50,3 +50,15 @@ button:hover { background: #124c37; }
 :focus-visible { outline: 3px solid #9b4d00; outline-offset: 3px; }
 /* Space out entries and wrap long food names so they stay inside the card. */
 li { margin-bottom: 8px; overflow-wrap: anywhere; }
+
+/* Keep removal visually secondary to the Add buttons. Inline spacing allows
+   the button to wrap naturally below a long entry on narrow screens. */
+.remove-entry {
+  margin: 4px 0 4px 12px;
+  padding: 4px 10px;
+  background: white;
+  color: #8a2424;
+  border-color: #8a2424;
+}
+
+.remove-entry:hover { background: #fff0f0; }
