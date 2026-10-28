@@ -1,0 +1,56 @@
+<!-- Use modern HTML; lang="en" below identifies the page language for assistive tools. -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <!-- Page settings: UTF-8 supports text characters; viewport fits mobile screens. -->
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <!-- This title appears in the browser tab. CSS controls how the page looks. -->
+  <title>Fitworld | Home</title>
+  <link rel="stylesheet" href="styles.css">
+  <!-- defer runs JavaScript after the HTML is parsed, so the form elements exist. -->
+  <script src="script.js" defer></script>
+</head>
+<body>
+  <!-- Site introduction. The h1 is the main heading visible on the page. -->
+  <header>
+    <h1>Fitworld</h1>
+    <p>Your food and workout log.</p>
+  </header>
+
+  <!-- main identifies the primary content; sections group each type of log. -->
+  <main>
+    <h2>Home</h2>
+    <!-- aria-labelledby uses the heading ID to give this section an accessible name. -->
+    <section aria-labelledby="food-heading">
+      <h3 id="food-heading">Food log</h3>
+      <p>Add a food and its calories. This demo clears when you refresh.</p>
+      <!-- JavaScript finds this form by ID and handles its submit event. -->
+      <form id="food-form">
+        <!-- Each label targets its input ID. required blocks empty submissions;
+             maxlength limits the name to 80 characters. Placeholder text is an example. -->
+        <label for="food-name">Food name</label>
+        <input id="food-name" type="text" placeholder="e.g. Oatmeal" maxlength="80" required>
+        <!-- The browser requires a number: min=0 allows zero, step=1 requires whole numbers.
+             These are browser-side checks, not a substitute for future server validation. -->
+        <label for="food-calories">Calories (kcal)</label>
+        <input id="food-calories" type="number" placeholder="e.g. 150" min="0" step="1" required>
+        <!-- A submit button triggers form validation, then the JavaScript submit handler. -->
+        <button type="submit">Add food</button>
+      </form>
+      <!-- Initially the list is empty. JavaScript hides this message after the first entry. -->
+      <p id="food-empty">No food logged yet.</p>
+      <!-- JavaScript creates one li (list item) here for each submitted food. -->
+      <ul id="food-list"></ul>
+      <!-- role="status" lets assistive technology announce changes to the total. -->
+      <p role="status">Total calories: <strong id="calorie-total">0</strong> kcal</p>
+    </section>
+
+    <!-- Placeholder only: workout entry and saving are not implemented yet. -->
+    <section aria-labelledby="workout-heading">
+      <h3 id="workout-heading">Workout log</h3>
+      <p>No workouts logged yet. Workout logging is coming next.</p>
+    </section>
+  </main>
+</body>
+</html>
