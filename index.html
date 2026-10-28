@@ -46,10 +46,23 @@
       <p role="status">Total calories: <strong id="calorie-total">0</strong> kcal</p>
     </section>
 
-    <!-- Placeholder only: workout entry and saving are not implemented yet. -->
+    <!-- Workout logging follows the same form/list/total structure as food logging. -->
     <section aria-labelledby="workout-heading">
       <h3 id="workout-heading">Workout log</h3>
-      <p>No workouts logged yet. Workout logging is coming next.</p>
+      <p>Add a workout and how long you exercised. This demo clears when you refresh.</p>
+      <form id="workout-form">
+        <!-- Labels connect to input IDs so clicking a label focuses its field. -->
+        <label for="workout-name">Workout name</label>
+        <input id="workout-name" type="text" placeholder="e.g. Walking" maxlength="80" required>
+        <!-- A completed workout needs at least one minute; step=1 requires whole minutes. -->
+        <label for="workout-minutes">Duration (minutes)</label>
+        <input id="workout-minutes" type="number" placeholder="e.g. 30" min="1" step="1" required>
+        <button type="submit">Add workout</button>
+      </form>
+      <p id="workout-empty">No workouts logged yet.</p>
+      <ul id="workout-list"></ul>
+      <!-- This total is separate from food calories: we are tracking time, not calories burned. -->
+      <p role="status">Total workout time: <strong id="workout-total">0</strong> minutes</p>
     </section>
   </main>
 </body>
