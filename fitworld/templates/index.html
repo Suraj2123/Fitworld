@@ -1,0 +1,196 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#173f35">
+  <meta name="description" content="Start your Fitworld fitness journey with a routine that fits your life.">
+  <title>Get started · Fitworld</title>
+  <link rel="icon" href="{{ url_for('static', filename='mark.svg') }}" type="image/svg+xml">
+  <link rel="stylesheet" href="{{ url_for('static', filename='onboarding.css') }}">
+  <script src="{{ url_for('static', filename='onboarding.js') }}" defer></script>
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to setup</a>
+  <div class="app-shell">
+    <aside class="journey" aria-label="Your Fitworld journey">
+      <a class="brand" href="/" aria-label="Fitworld home">
+        <img src="{{ url_for('static', filename='mark.svg') }}" width="35" height="35" alt="">
+        fitworld<span class="brand-dot">.</span>
+      </a>
+      <div class="journey-copy">
+        <p class="eyebrow">A LITTLE MOVEMENT. A BIG DIFFERENCE.</p>
+        <h1>Your next chapter<br>starts with <em>you.</em></h1>
+        <p>A first workout. A new personal best. A little more energy. Whatever moves you, start here.</p>
+      </div>
+      <svg class="track-art" viewBox="0 0 450 330" fill="none" aria-hidden="true">
+        <path d="M-45 300 170 85c60-60 160-60 220 0s60 160 0 220L175 520" />
+        <path d="M-20 325 195 110c46-46 122-46 168 0s46 122 0 168L148 493" />
+        <path d="M5 350 220 135c32-32 84-32 116 0s32 84 0 116L121 466" />
+        <path d="M30 375 245 160c18-18 46-18 64 0s18 46 0 64L94 439" />
+        <circle cx="277" cy="192" r="15" class="track-dot" />
+        <path d="m271 192 4 4 8-9" class="track-check" />
+      </svg>
+      <div class="journey-bottom"><span class="mini-line"></span> PROGRESS AT YOUR PACE</div>
+    </aside>
+
+    <div class="workspace">
+      <header class="topbar">
+        <span class="setup-label">YOUR PERSONAL STARTING POINT</span>
+        <button id="account-toggle" class="text-button" type="button" hidden>Already a member? <span>Sign in ↗</span></button>
+        <button id="signout" class="text-button" type="button" hidden>Sign out ↗</button>
+      </header>
+
+      <main id="main" tabindex="-1">
+        <div id="boot" class="boot" role="status">Getting your starting point ready…</div>
+        <noscript><p class="notice">Please enable JavaScript to create your account and save your onboarding steps.</p></noscript>
+
+        <div id="setup" hidden>
+          <nav class="stepper" aria-label="Setup progress">
+            <ol>
+              <li><button type="button" data-step="0"><span class="step-number">1</span><span>Account</span></button></li>
+              <li><button type="button" data-step="1"><span class="step-number">2</span><span>Your baseline</span></button></li>
+              <li><button type="button" data-step="2"><span class="step-number">3</span><span>Your rhythm</span></button></li>
+              <li><button type="button" data-step="3"><span class="step-number">4</span><span>Ready, set</span></button></li>
+            </ol>
+          </nav>
+
+          <section id="panel-account" class="panel" aria-labelledby="account-title" hidden>
+            <p class="eyebrow stage-kicker">LET’S MAKE IT PERSONAL</p>
+            <h2 id="account-title" tabindex="-1">A fresh start.<br>A stronger you.</h2>
+            <p class="intro" id="account-intro">Create your account, then we’ll find a starting point that feels right for you.</p>
+            <form id="account-form" novalidate>
+              <div class="error-summary" id="account-errors" role="alert" tabindex="-1" hidden></div>
+              <div id="name-field" class="field">
+                <label for="display_name">What should we call you?</label>
+                <input id="display_name" name="display_name" autocomplete="nickname" placeholder="Your name" maxlength="80" required aria-describedby="display_name-error">
+                <p class="field-error" id="display_name-error"></p>
+              </div>
+              <div class="field">
+                <label for="email">Email address</label>
+                <input id="email" name="email" type="email" autocomplete="email" placeholder="you@example.com" maxlength="254" required aria-describedby="email-error">
+                <p class="field-error" id="email-error"></p>
+              </div>
+              <div class="field">
+                <label for="password">Password</label>
+                <div class="password-wrap">
+                  <input id="password" name="password" type="password" autocomplete="new-password" minlength="8" maxlength="128" required aria-describedby="password-hint password-error">
+                  <button id="password-toggle" class="password-toggle" type="button" aria-label="Show password" aria-pressed="false">Show</button>
+                </div>
+                <p class="hint" id="password-hint">At least 8 characters. Make it your own.</p>
+                <p class="field-error" id="password-error"></p>
+              </div>
+              <button class="primary-button" id="account-submit" type="submit">Create account <span aria-hidden="true">↗</span></button>
+              <p class="form-footnote">Your journey, your space. Your fitness profile stays tied to your account.</p>
+            </form>
+            <div class="promise"><span class="promise-icon" aria-hidden="true">✓</span><div><strong>Built around your real life.</strong><p>No perfect starting point needed. Just yours.</p></div></div>
+          </section>
+
+          <section id="panel-baseline" class="panel" aria-labelledby="baseline-title" hidden>
+            <p class="eyebrow stage-kicker">01 / MEET YOUR STARTING POINT</p>
+            <h2 id="baseline-title" tabindex="-1">Every journey<br>starts somewhere.</h2>
+            <p class="intro">A few details to help shape your experience. You can update these whenever life changes.</p>
+            <form id="baseline-form" novalidate>
+              <div class="error-summary" id="baseline-errors" role="alert" tabindex="-1" hidden></div>
+              <div class="field-grid">
+                <div class="field">
+                  <label for="age">Age</label>
+                  <div class="input-unit"><input id="age" name="age" type="number" inputmode="numeric" min="13" max="120" step="1" required placeholder="e.g. 21" aria-describedby="age-error"><span>years</span></div>
+                  <p class="field-error" id="age-error"></p>
+                </div>
+                <div class="field">
+                  <label for="weight">Body weight</label>
+                  <div class="weight-controls">
+                    <input id="weight" name="weight" type="number" inputmode="decimal" min="20" max="400" step="any" required placeholder="e.g. 70" aria-describedby="weight-error">
+                    <label class="sr-only" for="unit_system">Weight unit</label>
+                    <select id="unit_system" name="unit_system" aria-describedby="unit_system-error"><option value="metric">kg</option><option value="imperial">lb</option></select>
+                  </div>
+                  <p class="field-error" id="weight-error"></p><p class="field-error" id="unit_system-error"></p>
+                </div>
+              </div>
+              <fieldset class="field">
+                <legend>How familiar are you with exercise?</legend>
+                <div class="choice-stack">
+                  <label class="choice"><input type="radio" name="experience_level" value="beginner" required aria-describedby="experience_level-error"><span class="choice-symbol" aria-hidden="true">01</span><span><strong>Finding my feet</strong><small>I’m new, or getting back into it.</small></span><span class="radio-mark" aria-hidden="true"></span></label>
+                  <label class="choice"><input type="radio" name="experience_level" value="intermediate" aria-describedby="experience_level-error"><span class="choice-symbol" aria-hidden="true">02</span><span><strong>Building momentum</strong><small>I have some experience and a routine.</small></span><span class="radio-mark" aria-hidden="true"></span></label>
+                  <label class="choice"><input type="radio" name="experience_level" value="advanced" aria-describedby="experience_level-error"><span class="choice-symbol" aria-hidden="true">03</span><span><strong>Raising the bar</strong><small>I train regularly and want to progress.</small></span><span class="radio-mark" aria-hidden="true"></span></label>
+                </div>
+                <p class="field-error" id="experience_level-error"></p>
+              </fieldset>
+              <div class="field">
+                <label for="current_workouts_per_week">How many workouts do you do in a typical week?</label>
+                <select id="current_workouts_per_week" name="current_workouts_per_week" required aria-describedby="current_workouts_per_week-error">
+                  <option value="">Choose your current pace</option>
+                  <option value="0">0 — starting fresh</option><option value="1">1 workout</option><option value="2">2 workouts</option><option value="3">3 workouts</option><option value="4">4 workouts</option><option value="5">5 workouts</option><option value="6">6 workouts</option><option value="7">7 workouts</option>
+                </select>
+                <p class="field-error" id="current_workouts_per_week-error"></p>
+              </div>
+              <button class="primary-button" type="submit">Find my rhythm <span aria-hidden="true">→</span></button>
+              <p class="save-note">Your account is saved. You can come back to finish.</p>
+            </form>
+          </section>
+
+          <section id="panel-rhythm" class="panel" aria-labelledby="rhythm-title" hidden>
+            <p class="eyebrow stage-kicker">02 / MAKE ROOM FOR MOVEMENT</p>
+            <h2 id="rhythm-title" tabindex="-1">A routine that<br>fits your life.</h2>
+            <p class="intro">Think about what you want to work toward and what feels manageable for your week.</p>
+            <form id="rhythm-form" novalidate>
+              <div class="error-summary" id="rhythm-errors" role="alert" tabindex="-1" hidden></div>
+              <fieldset class="field">
+                <legend>What’s moving you?</legend>
+                <div class="goal-grid">
+                  <label class="goal-choice"><input name="primary_goal" type="radio" value="get_active" required aria-describedby="primary_goal-error"><span class="goal-glyph" aria-hidden="true">↗</span><strong>Get more active</strong><small>Make movement a habit</small></label>
+                  <label class="goal-choice"><input name="primary_goal" type="radio" value="build_strength" aria-describedby="primary_goal-error"><span class="goal-glyph" aria-hidden="true">＋</span><strong>Build strength</strong><small>Feel stronger, day by day</small></label>
+                  <label class="goal-choice"><input name="primary_goal" type="radio" value="improve_endurance" aria-describedby="primary_goal-error"><span class="goal-glyph" aria-hidden="true">↝</span><strong>Go the distance</strong><small>Work on your endurance</small></label>
+                  <label class="goal-choice"><input name="primary_goal" type="radio" value="improve_mobility" aria-describedby="primary_goal-error"><span class="goal-glyph" aria-hidden="true">◎</span><strong>Move more freely</strong><small>Improve your mobility</small></label>
+                </div>
+                <p class="field-error" id="primary_goal-error"></p>
+              </fieldset>
+              <fieldset class="field">
+                <legend>Where do you like to work out?</legend>
+                <div class="segments">
+                  <label><input type="radio" name="training_location" value="home" required aria-describedby="training_location-error"><span>At home</span></label>
+                  <label><input type="radio" name="training_location" value="gym" aria-describedby="training_location-error"><span>At the gym</span></label>
+                  <label><input type="radio" name="training_location" value="outdoors" aria-describedby="training_location-error"><span>Outdoors</span></label>
+                </div>
+                <p class="field-error" id="training_location-error"></p>
+              </fieldset>
+              <div class="field-grid">
+                <div class="field"><label for="target_days_per_week">Your weekly goal</label><select id="target_days_per_week" name="target_days_per_week" required aria-describedby="target_days_per_week-error"><option value="">Days per week</option><option value="1">1 day</option><option value="2">2 days</option><option value="3">3 days</option><option value="4">4 days</option><option value="5">5 days</option><option value="6">6 days</option><option value="7">7 days</option></select><p class="field-error" id="target_days_per_week-error"></p></div>
+                <div class="field"><label for="session_minutes">Time for each workout</label><select id="session_minutes" name="session_minutes" required aria-describedby="session_minutes-error"><option value="">Choose a duration</option><option value="15">15 minutes</option><option value="30">30 minutes</option><option value="45">45 minutes</option><option value="60">60 minutes</option><option value="90">90 minutes</option></select><p class="field-error" id="session_minutes-error"></p></div>
+              </div>
+              <div class="form-actions"><button type="button" class="back-button" data-go="1">← Back</button><button class="primary-button" type="submit">Review my starting point <span aria-hidden="true">→</span></button></div>
+              <p class="save-note">Small, consistent steps count. Pick a pace you can return to.</p>
+            </form>
+          </section>
+
+          <section id="panel-review" class="panel" aria-labelledby="review-title" hidden>
+            <p class="eyebrow stage-kicker">03 / THE START OF SOMETHING GOOD</p>
+            <h2 id="review-title" tabindex="-1">Your journey.<br>Your way.</h2>
+            <p class="intro">Here’s your starting point. Take a look, make it yours, and you’re ready to begin.</p>
+            <div class="profile-summary" id="review-summary"></div>
+            <div class="edit-row"><button class="text-button" type="button" data-go="1">Edit baseline ↗</button><button class="text-button" type="button" data-go="2">Edit preferences ↗</button></div>
+            <form id="review-form" novalidate>
+              <div class="error-summary" id="review-errors" role="alert" tabindex="-1" hidden></div>
+              <button class="primary-button" type="submit">Let’s make a start <span aria-hidden="true">↗</span></button>
+            </form>
+            <p class="form-footnote">Your preferences help the team personalize your future workouts. You can change them at any time.</p>
+          </section>
+
+          <section id="panel-ready" class="panel ready-panel" aria-labelledby="ready-title" hidden>
+            <div class="success-mark" aria-hidden="true">✓</div>
+            <p class="eyebrow stage-kicker">YOUR STARTING POINT IS SAVED</p>
+            <h2 id="ready-title" tabindex="-1">You’re in,<br><span id="ready-name"></span>.</h2>
+            <p class="intro">One small step, already taken. Your profile and preferences are ready for your fitness journey.</p>
+            <div class="profile-summary" id="ready-summary"></div>
+            <div class="next-note"><strong>Up next: your first workout.</strong><p>Your workout home will live here as the Fitworld team builds it. For now, you can revisit your starting point anytime.</p></div>
+            <button type="button" class="primary-button" data-go="1">Update my starting point <span aria-hidden="true">↗</span></button>
+          </section>
+        </div>
+      </main>
+      <footer class="page-footer"><span>MADE FOR EVERY STARTING POINT.</span><span>FITWORLD © {{ year | default(2026) }}</span></footer>
+      <p id="status" class="sr-only" role="status" aria-live="polite"></p>
+    </div>
+  </div>
+</body>
+</html>
