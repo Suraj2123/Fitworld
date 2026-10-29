@@ -1,14 +1,14 @@
 # Fitworld database contract
 
-The proposal needs persistent accounts, fitness preferences, routines, completed or partial workouts, nutrition, progress pictures, and goals. This initial SQLite schema covers those entities; this branch implements the account and onboarding endpoints. The remaining feature endpoints belong to the team's next work.
+The proposal needs persistent accounts, fitness preferences, routines, completed or partial workouts, nutrition, progress pictures, and goals. The app implements onboarding, Home, Suggested Workouts, and Personal Progress over this schema. See [the integration guide](integration.md) for the current module structure and activity/progress endpoints. Photo uploads and automatic food analysis remain future extensions.
 
 SQLite is built into Python and can also be accessed from C++. Flask serves HTML/CSS/JavaScript and a small JSON API. No external database service, frontend build, or C++ toolchain is needed to run this contribution. A teammate can add a C++ service behind the same API boundary if the team chooses.
 
 ## Apply the schema
 
-Run `python -m flask --app fitworld init-db` after installing `requirements.txt`. The database lives at `instance/fitworld.sqlite3`. Each SQL file in `fitworld/migrations/` is applied once, in filename order, and tracked in `schema_migrations`. Each migration runs in a transaction. Re-running `init-db` preserves accounts and history.
+Run `python -m flask --app fitworld init-db` after installing `requirements.txt`. The database lives at `instance/fitworld.sqlite3`. Each SQL file in `fitworld/migrations/` is applied once, in filename order, and tracked in `schema_migrations`. Each migration runs in a transaction. Re-running `init-db` preserves accounts and history and inserts missing starter catalog definitions.
 
-Before this initial branch is shared, `001_initial.sql` is the initial schema definition. After teammates start using it, add a new migration such as `002_add_equipment_preferences.sql` rather than editing an applied file. The runner is intended for one developer process at a time.
+`001_initial.sql` is the shared initial schema. `002_scheduled_workout_logs.sql` adds an optional schedule link to existing logs, with ownership checks and one completed log per scheduled session. Add a new numbered migration rather than editing either applied file. The runner is intended for one developer process at a time.
 
 Every connection must execute `PRAGMA foreign_keys = ON`. `fitworld.db.get_db()` does so automatically. This is also required for command-line SQL tools and any future C++ connection. See [SQLite's foreign key documentation](https://www.sqlite.org/foreignkeys.html).
 
@@ -29,6 +29,7 @@ erDiagram
     users ||--o{ scheduled_workouts : owns
     workouts ||--o{ scheduled_workouts : plans
     users ||--o{ workout_logs : logs
+    scheduled_workouts o|--o{ workout_logs : tracks
     workouts o|--o{ workout_logs : references
     workout_logs ||--o{ exercise_logs : contains
     exercises o|--o{ exercise_logs : references
@@ -45,11 +46,11 @@ erDiagram
 | `user_profiles` | One row per user: age, current weight in kg, preferred display unit, experience, and current weekly exercise frequency. Age 13–120 and weight 20–400 kg are input bounds for this prototype, not personalized fitness advice. |
 | `workout_preferences` | One row per user: primary goal, training location, desired days per week, and minutes per workout. A preference does not automatically select a routine. |
 | `body_measurements` | Weight history, one reading per user per UTC date. Saving the baseline upserts today's reading and updates current profile weight in the same transaction. |
-| `exercises`, `workouts`, `workout_exercises` | Shared catalog with ordered exercises, suggested sets/reps/time, intensity 1–10, and estimated workout duration. Catalog initially empty. |
+| `exercises`, `workouts`, `workout_exercises` | Shared catalog with ordered exercises, suggested sets/reps/time, intensity 1–10, and estimated workout duration. `init-db` adds missing starter examples without seeding user history. |
 | `routines`, `routine_workouts` | Reusable weekly plans. Days use ISO weekday numbers: Monday = 1, Sunday = 7. Week numbers start at 1. Future writers must check week numbers against `routines.duration_weeks`. |
 | `user_routines` | User enrollment history. A partial unique index permits at most one `active` routine per user; mark the old one `replaced` before adopting a new one, in one transaction. |
 | `scheduled_workouts` | Calendar dates for planned, completed, or skipped workouts. Optional enrollment is checked with a composite foreign key so it must belong to the same user. Dates are explicit rather than derived from the current routine. |
-| `workout_logs`, `exercise_logs` | Completed and partial workout history, actual reps/time/load, muscle groups, estimated calories, and notes. Snapshot names survive catalog edits or deletion. Logs may exist without a scheduled workout. |
+| `workout_logs`, `exercise_logs` | Completed and partial workout history, actual reps/time/load, muscle groups, estimated calories, and notes. Snapshot names survive catalog edits or deletion. Logs may exist without a scheduled workout; linked logs must match that session's owner, workout, and date. |
 | `nutrition_logs`, `nutrition_items` | Manual or photo meal entry, servings, and per-serving calories/macronutrients/sodium. Multiply each nutrient by servings when aggregating. `NULL` means unknown nutrient; zero means known zero. Photo analysis is not implemented. |
 | `progress_photos` | Private storage keys and dates. Upload, authorization, retrieval, and removal of actual images require future endpoints. Do not serve these from `static/`. |
 | `goals`, `milestones` | Dated numeric or custom goals and achieved milestones. A selected onboarding goal is a preference; no fabricated milestones or workout history are inserted. |
@@ -79,7 +80,7 @@ All responses are JSON. Read `GET /api/session` first. Include its `csrf_token` 
 | PUT | `/api/onboarding/preferences` | `primary_goal`, `training_location`, `target_days_per_week`, `session_minutes`. Requires baseline first. |
 | POST | `/api/onboarding/complete` | Empty JSON object. Requires both steps; sets completion timestamp once. Safe to retry. |
 
-Successful onboarding writes return `{ "user": { … } }`. Updates after completion remain supported. A returning incomplete user resumes the first unsaved step. The frontend's final screen is the integration point for the future Home page; it does not generate a workout plan.
+Successful onboarding writes return `{ "user": { … } }`. Updates after completion remain supported. A returning incomplete user resumes the first unsaved step. Completed users can continue to Home; a workout plan is selected explicitly on Suggested Workouts.
 
 Validation returns HTTP 422 with `{ "error": "Check the highlighted fields.", "fields": { "age": "…" } }`. Authentication failures return 401, CSRF failures 403, and conflicts or out-of-order steps 409. Malformed JSON returns 400. Registration and login require 8–128 and 1–128 password characters respectively; new passwords use Werkzeug's salted scrypt hash.
 

@@ -200,7 +200,9 @@ class FitworldTest(unittest.TestCase):
             connection = get_db()
             self.assertEqual(connection.execute("PRAGMA foreign_keys").fetchone()[0], 1)
             self.assertEqual(connection.execute("SELECT COUNT(*) FROM users").fetchone()[0], 1)
-            self.assertEqual(connection.execute("SELECT COUNT(*) FROM schema_migrations").fetchone()[0], 1)
+            versions = {row[0] for row in connection.execute("SELECT version FROM schema_migrations")}
+            self.assertIn("001_initial.sql", versions)
+            self.assertIn("002_scheduled_workout_logs.sql", versions)
             self.assertEqual(connection.execute("PRAGMA foreign_key_check").fetchall(), [])
             with self.assertRaises(sqlite3.IntegrityError):
                 connection.execute("INSERT INTO body_measurements (user_id, measured_on, weight_kg) VALUES (999, '2026-10-21', 70)")

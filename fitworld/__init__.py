@@ -5,7 +5,7 @@ import secrets
 from datetime import timedelta
 from pathlib import Path
 
-from flask import Flask, jsonify, render_template, request, session
+from flask import Flask, jsonify, redirect, render_template, request, session
 from werkzeug.exceptions import HTTPException
 
 from . import db
@@ -20,7 +20,7 @@ def create_app(test_config=None, *, instance_path=None):
         SESSION_COOKIE_SAMESITE="Lax",
         SESSION_COOKIE_SECURE=os.environ.get("FITWORLD_HTTPS") == "1",
         PERMANENT_SESSION_LIFETIME=timedelta(hours=12),
-        MAX_CONTENT_LENGTH=16 * 1024,
+        MAX_CONTENT_LENGTH=128 * 1024,
     )
     if test_config:
         app.config.update(test_config)
@@ -39,6 +39,10 @@ def create_app(test_config=None, *, instance_path=None):
     from .api import bp
 
     app.register_blueprint(bp)
+    from .app_api import bp as app_api
+    from .views import bp as pages
+    app.register_blueprint(app_api)
+    app.register_blueprint(pages)
 
     @app.before_request
     def protect_writes():
@@ -56,7 +60,7 @@ def create_app(test_config=None, *, instance_path=None):
             "default-src 'self'; script-src 'self'; style-src 'self'; "
             "img-src 'self'; object-src 'none'; base-uri 'self'; frame-ancestors 'none'"
         )
-        if request.path.startswith("/api/"):
+        if request.path.startswith("/api/") or session.get("user_id"):
             response.headers["Cache-Control"] = "no-store"
         return response
 
@@ -68,6 +72,10 @@ def create_app(test_config=None, *, instance_path=None):
 
     @app.get("/")
     def index():
+        from .api import current_user
+        user = current_user()
+        if user and user["onboarding_completed_at"] and request.args.get("setup") != "1":
+            return redirect("/home")
         return render_template("index.html")
 
     return app

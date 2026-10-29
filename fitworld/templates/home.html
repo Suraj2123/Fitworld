@@ -1,0 +1,30 @@
+{% extends 'app_base.html' %}
+{% block styles %}<link rel="stylesheet" href="{{ url_for('static', filename='home.css') }}">{% endblock %}
+{% block scripts %}<script type="module" src="{{ url_for('static', filename='home.js') }}"></script>{% endblock %}
+{% block content %}
+<div class="page-heading"><div><p class="eyebrow">YOUR EVERYDAY MOMENTUM</p><h1>Hey, {{ g.user.display_name }}<span class="accent">.</span></h1><p class="muted">What would you like to do today?</p></div><div class="heading-actions"><button type="button" class="secondary-button" id="jump-food">＋ Log food</button><button type="button" class="primary-button" id="open-workout-log">＋ Log a workout</button></div></div>
+<section class="home-banner" aria-labelledby="banner-title"><div><p class="eyebrow">ONE STEP AT A TIME</p><h2 id="banner-title">Small steps.<br>Stronger days.</h2><p id="home-routine">Find a rhythm you can return to.</p><a class="light-link" href="/workouts">Find your next workout <span aria-hidden="true">↗</span></a></div><img src="{{ url_for('static', filename='art/movement.svg') }}" width="380" height="240" alt="" class="banner-art"></section>
+<section aria-labelledby="today-title"><div class="section-heading"><h2 id="today-title">Your daily check-in</h2><label class="date-control">Viewing <input type="date" id="home-date"></label></div><div id="today-stats" class="stats-grid" aria-busy="true"><p class="muted">Loading your day…</p></div><p id="today-muscles" class="small muted"></p></section>
+<div class="home-columns"><div class="home-main-column">
+  <section aria-labelledby="suggested-heading"><div class="section-heading"><div><p class="eyebrow">MAKE TIME FOR MOVEMENT</p><h2 id="suggested-heading">A little inspiration</h2></div><a class="text-link" href="/workouts">Explore all ↗</a></div><div id="home-suggestions" class="card-grid compact-grid"></div></section>
+  <section class="panel-card" aria-labelledby="schedule-heading"><div class="section-heading"><h2 id="schedule-heading">Your next seven days</h2><a href="/workouts" class="text-link">Your routine ↗</a></div><div id="home-schedule"></div></section>
+  <section class="panel-card" aria-labelledby="workout-heading"><h2 id="workout-heading">Workout log</h2><p class="small muted">Log any movement by name, or use “Log a workout” for a catalog session with exercise sets.</p>
+    <form id="workout-form"><div class="form-error error-box" role="alert" tabindex="-1" hidden></div><div class="form-grid"><div><label for="workout-name">Workout name</label><input id="workout-name" name="workout_name" type="text" placeholder="e.g. Walking" maxlength="120" required></div><div><label for="workout-minutes">Duration (minutes)</label><input id="workout-minutes" name="duration_minutes" type="number" placeholder="e.g. 30" min="1" max="1440" step="1" required></div></div><label for="manual-workout-status">How did it go?</label><select id="manual-workout-status" name="status"><option value="completed">Completed</option><option value="partial">Stopped early</option></select><button type="submit" class="primary-button">Add workout <span aria-hidden="true">＋</span></button></form>
+    <p class="workout-time-total" role="status">Total workout time: <strong id="workout-total">0</strong> minutes</p><div id="today-workouts"></div>
+  </section>
+  <section aria-labelledby="recent-heading"><div class="section-heading"><h2 id="recent-heading">Your recent movement</h2><a class="text-link" href="/progress">See your progress ↗</a></div><div id="recent-workouts" class="card-grid compact-grid"></div></section>
+</div><aside class="home-food-column">
+  <section class="panel-card food-panel" aria-labelledby="food-heading"><p class="eyebrow">FUEL YOUR DAY</p><h2 id="food-heading">Food log</h2><p class="small muted">Enter the nutrition for one serving. We’ll multiply it by the number of servings.</p>
+    <form id="food-form"><div class="form-error error-box" role="alert" tabindex="-1" hidden></div>
+      <label for="food-name">Food name</label><input id="food-name" name="food_name" type="text" placeholder="e.g. Oatmeal" maxlength="120" required>
+      <div class="form-grid"><div><label for="serving-size">Serving size</label><input id="serving-size" name="serving_description" placeholder="e.g. 1 cup" maxlength="120" required></div><div><label for="servings">Servings eaten</label><input id="servings" name="servings" type="number" min="0.01" max="1000" step="any" value="1" required></div></div>
+      <label for="food-calories">Calories per serving (kcal)</label><input id="food-calories" name="calories_per_serving" type="number" placeholder="e.g. 150" min="0" max="100000" step="any" required>
+      <details><summary>Nutrition details <span class="optional">(optional)</span></summary><p class="small muted">Leave unknown values empty.</p><div class="form-grid">
+        {% for name, label in [('protein_g_per_serving','Protein (g)'),('carbs_g_per_serving','Carbs (g)'),('fat_g_per_serving','Fat (g)'),('sodium_mg_per_serving','Sodium (mg)')] %}<div><label for="food-{{ name }}">{{ label }}</label><input id="food-{{ name }}" name="{{ name }}" type="number" min="0" max="1000000" step="any"></div>{% endfor %}
+      </div></details><p id="food-date-note" class="small muted"></p><button type="submit" class="primary-button">Add food <span aria-hidden="true">＋</span></button>
+    </form>
+    <div class="food-total">Calories consumed <strong><span id="calorie-total">0</span> <small>kcal</small></strong></div><div id="food-list"></div>
+  </section>
+</aside></div>
+{% endblock %}
+{% block dialogs %}{% include '_workout_dialogs.html' %}{% endblock %}

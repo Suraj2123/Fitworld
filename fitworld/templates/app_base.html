@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#173f35">
+  <title>{{ title }} · Fitworld</title>
+  <link rel="icon" href="{{ url_for('static', filename='mark.svg') }}" type="image/svg+xml">
+  <link rel="stylesheet" href="{{ url_for('static', filename='app.css') }}">
+  {% block styles %}{% endblock %}
+  <script type="module" src="{{ url_for('static', filename='js/shell.js') }}"></script>
+  {% block scripts %}{% endblock %}
+</head>
+<body data-page="{{ page }}" data-units="{{ g.user.profile.unit_system }}">
+  <a class="skip-link" href="#main">Skip to content</a>
+  <header class="app-header">
+    <a class="brand" href="/home"><img src="{{ url_for('static', filename='mark.svg') }}" alt="" width="34" height="34">fitworld<span>.</span></a>
+    <nav aria-label="Main navigation" class="main-nav">
+      {% for key, href, label in [('home', '/home', 'Home'), ('workouts', '/workouts', 'Suggested Workouts'), ('progress', '/progress', 'Personal Progress')] %}
+      <a href="{{ href }}" {% if page == key %}aria-current="page"{% endif %}>{{ label }}</a>
+      {% endfor %}
+    </nav>
+    <a class="account-chip" href="/settings" aria-label="Settings for {{ g.user.display_name }}"><span class="avatar" aria-hidden="true">{{ g.user.display_name[0] | upper }}</span><span>{{ g.user.display_name }}</span></a>
+  </header>
+  <main id="main" class="app-main" tabindex="-1">
+    <div id="page-error" class="error-box" role="alert" tabindex="-1" hidden></div>
+    {% block content %}{% endblock %}
+  </main>
+  <footer class="app-footer"><a href="/settings" {% if page == 'settings' %}aria-current="page"{% endif %}>Settings ↗</a><span>PROGRESS AT YOUR PACE.</span><button type="button" class="text-button" id="app-signout">Sign out</button></footer>
+  <div id="app-status" class="toast" role="status" aria-live="polite" hidden></div>
+  <noscript><p class="error-box">Enable JavaScript to load your saved activity and use the logging forms.</p></noscript>
+  <dialog id="delete-dialog" aria-labelledby="delete-title">
+    <div class="dialog-header"><h2 id="delete-title">Remove this entry?</h2><button type="button" class="icon-button" data-close aria-label="Close">×</button></div>
+    <p>The entry and its recorded details will be removed from your account.</p>
+    <form method="dialog" class="button-row"><button class="secondary-button" value="cancel">Keep entry</button><button class="danger-button" value="remove">Remove entry</button></form>
+  </dialog>
+  {% block dialogs %}{% endblock %}
+</body>
+</html>
