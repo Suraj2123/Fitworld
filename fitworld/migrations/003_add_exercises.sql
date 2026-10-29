@@ -126,4 +126,32 @@ VALUES
         'Legs',
         'wall',
         NULL
+    ),
+    (
+        'Twisting Sit-Up',
+        'Perform a sit-up while rotating the torso to engage the abdominal muscles and obliques.',
+        'Core',
+        'none',
+        NULL
+    ),
+    (
+        'Bicycle Crunch',
+        'Alternate bringing each elbow toward the opposite knee while cycling the legs to work the abs and obliques.',
+        'Core',
+        'none',
+        NULL
+    ),
+    (
+        'Ab Roller',
+        'Roll an ab wheel forward and pull it back while maintaining a braced core.',
+        'Core',
+        'ab wheel',
+        NULL
+    ),
+    (
+        'Leg Raises with Crunches',
+        'Raise the legs while curling the upper torso to engage the abdominal muscles.',
+        'Core',
+        'none',
+        NULL
     );
