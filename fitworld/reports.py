@@ -3,6 +3,28 @@
 from .activity import NUTRIENTS
 
 
+def workout_history(connection, user_id, page, per_page):
+    """Read one page of the account's logs, newest performed date first."""
+    total = connection.execute(
+        "SELECT COUNT(*) FROM workout_logs WHERE user_id=?", (user_id,)
+    ).fetchone()[0]
+    rows = connection.execute(
+        """SELECT id, workout_id, workout_name, performed_on, duration_seconds,
+                  status, estimated_calories, notes
+           FROM workout_logs WHERE user_id=?
+           ORDER BY performed_on DESC, started_at DESC, id DESC LIMIT ? OFFSET ?""",
+        (user_id, per_page, (page - 1) * per_page),
+    ).fetchall()
+    return {
+        "workouts": [dict(row) for row in rows],
+        "pagination": {
+            "page": page, "per_page": per_page, "total": total,
+            "total_pages": (total + per_page - 1) // per_page,
+            "has_next": page * per_page < total,
+        },
+    }
+
+
 def daily_activity(connection, user_id, selected_date):
     workouts = [dict(row) for row in connection.execute("SELECT * FROM workout_logs WHERE user_id=? AND performed_on=? ORDER BY started_at DESC, id DESC", (user_id, selected_date))]
     muscle_groups = set()

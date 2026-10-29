@@ -73,6 +73,18 @@ def get_recent():
     return jsonify(workouts=[dict(row) for row in rows])
 
 
+@bp.get("/activity/workouts")
+@onboarded
+def get_workout_history():
+    pagination = {}
+    for key, default, maximum in (("page", "1", 2147483647), ("per_page", "20", 100)):
+        value = request.args.get(key, default)
+        if not value.isascii() or not value.isdigit() or len(value) > 10 or not 1 <= int(value) <= maximum:
+            raise ValidationError({key: f"Choose a whole number between 1 and {maximum}."})
+        pagination[key] = int(value)
+    return jsonify(reports.workout_history(get_db(), g.user["id"], **pagination))
+
+
 @bp.post("/activity/workouts")
 @onboarded
 def save_workout():

@@ -75,6 +75,48 @@ class AppTest(unittest.TestCase):
         self.assertEqual(detail["description"], "Team-edited description")
         self.assertEqual(len(detail["exercises"]), 3)
 
+    def test_workout_history_paginates_in_stable_order(self):
+        older = self.log(performed_on="2026-01-01").json["id"]
+        first = self.log(estimated_calories=None).json["id"]
+        second = self.log(status="partial").json["id"]
+        with self.app.app_context():
+            connection = get_db()
+            connection.execute("UPDATE workout_logs SET started_at='2026-01-05 12:00:00'")
+            connection.commit()
+        response = self.client.get("/api/activity/workouts?per_page=2")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual([row["id"] for row in response.json["workouts"]], [second, first])
+        self.assertEqual(response.json["workouts"][0]["status"], "partial")
+        self.assertIsNone(response.json["workouts"][1]["estimated_calories"])
+        self.assertEqual(response.json["pagination"], {"page": 1, "per_page": 2, "total": 3, "total_pages": 2, "has_next": True})
+        last = self.client.get("/api/activity/workouts?page=2&per_page=2").json
+        self.assertEqual([row["id"] for row in last["workouts"]], [older])
+        self.assertFalse(last["pagination"]["has_next"])
+        self.assertEqual(self.client.get("/api/activity/workouts?page=3&per_page=2").json["workouts"], [])
+
+    def test_workout_history_is_private_and_requires_completed_setup(self):
+        anon = self.app.test_client()
+        self.assertEqual(anon.get("/api/activity/workouts").status_code, 401)
+        self.write("register", {"display_name": "Pending", "email": "history@example.com", "password": "long-test-password"}, client=anon)
+        self.assertEqual(anon.get("/api/activity/workouts").status_code, 409)
+        self.log()
+        other = self.app.test_client()
+        self.create_account(other, "history-other@example.com")
+        data = other.get("/api/activity/workouts").json
+        self.assertEqual(data["workouts"], [])
+        self.assertEqual(data["pagination"], {"page": 1, "per_page": 20, "total": 0, "total_pages": 0, "has_next": False})
+
+    def test_workout_history_accepts_custom_workouts_and_rejects_invalid_pagination(self):
+        response = self.write("activity/workouts", {"workout_name": "Walk", "performed_on": self.day, "duration_minutes": 10, "status": "completed"})
+        data = self.client.get("/api/activity/workouts").json
+        self.assertEqual(data["workouts"][0]["id"], response.json["id"])
+        self.assertIsNone(data["workouts"][0]["workout_id"])
+        for query in ("page=0", "page=-1", "page=1.5", "page=abc", "page=", "page=2147483648", "page=" + "9" * 100, "per_page=0", "per_page=101", "per_page=abc"):
+            with self.subTest(query=query):
+                invalid = self.client.get("/api/activity/workouts?" + query)
+                self.assertEqual(invalid.status_code, 422)
+                self.assertIn(query.split("=")[0], invalid.json["fields"])
+
     def test_routine_suggestions_consider_experience_goal_and_weekly_pace(self):
         plans = self.client.get("/api/routines").json["routines"]
         self.assertEqual(plans[0]["name"], "Build your foundation")
