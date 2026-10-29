@@ -207,7 +207,8 @@ async function submitStep(event, path, method, next) {
     button.innerHTML = original;
     form.removeAttribute("aria-busy");
   }
-  if (succeeded) navigate(next);
+  if (succeeded && form.id === "account-form" && state.login && state.user?.onboarding_completed_at) window.location.assign("/home");
+  else if (succeeded) navigate(next);
 }
 
 function updateWeightLimits() {
@@ -287,6 +288,7 @@ async function boot() {
     await api("session");
     fillForms();
     $("#setup").hidden = false;
+    if (!state.user && new URLSearchParams(location.search).get("login") === "1") $("#account-toggle").click();
     const requested = stages.indexOf(window.location.hash.slice(1));
     navigate(requested < 0 ? highestStage() : requested, true, false);
     $("#boot").hidden = true;

@@ -62,19 +62,24 @@ def account(data, registering=True):
     return email, password, name
 
 
-def profile(data):
-    form = Form(data)
+def body_weight(form):
+    """Common body-weight bounds and conversion for onboarding and later check-ins."""
     unit = form.choice("unit_system", {"metric", "imperial"}, "your weight unit")
-    age = form.number("age", "age", 13, 120, integer=True)
-    # Convert at the API boundary; SQL always stores kilograms.
     minimum, maximum = (44.1, 881.8) if unit == "imperial" else (20, 400)
     weight = form.number("weight", "weight", minimum, maximum)
+    if weight is None:
+        return None, unit
+    kg = weight * 0.45359237 if unit == "imperial" else weight
+    return min(400, max(20, round(kg, 3))), unit
+
+
+def profile(data):
+    form = Form(data)
+    age = form.number("age", "age", 13, 120, integer=True)
+    kg, unit = body_weight(form)
     experience = form.choice("experience_level", {"beginner", "intermediate", "advanced"}, "your experience level")
     current = form.number("current_workouts_per_week", "current weekly workouts", 0, 7, integer=True)
     form.finish()
-    kg = weight * 0.45359237 if unit == "imperial" else weight
-    # Rounded display endpoints in pounds can differ by a few grams.
-    kg = min(400, max(20, round(kg, 3)))
     return age, kg, unit, experience, current
 
 

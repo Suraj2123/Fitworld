@@ -1,0 +1,5 @@
+{% extends 'app_base.html' %}
+{% block content %}
+<div class="page-heading"><div><p class="eyebrow">YOUR JOURNEY, YOUR WAY</p><h1>A little about you<span class="accent">.</span></h1><p class="muted">Keep your starting point in step with your life.</p></div></div>
+<div class="settings-grid"><section class="panel-card"><h2>Your account</h2><dl class="detail-list"><div><dt>Name</dt><dd>{{ g.user.display_name }}</dd></div><div><dt>Email</dt><dd>{{ g.user.email }}</dd></div><div><dt>Weight unit</dt><dd>{{ 'Pounds' if g.user.profile.unit_system == 'imperial' else 'Kilograms' }}</dd></div></dl><a class="secondary-button" href="/?setup=1#baseline">Update personal stats ↗</a></section><section class="panel-card"><h2>Your preferences</h2><p class="muted">Change your goals, experience, preferred workout space, or weekly pace. Saved workout history stays with your account.</p><a class="primary-button" href="/?setup=1#rhythm">Update workout preferences ↗</a></section></div>
+{% endblock %}

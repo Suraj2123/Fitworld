@@ -48,7 +48,9 @@ def migrate():
 def init_db_command():
     """Apply pending migrations without deleting existing data."""
     migrate()
-    click.echo("Database is up to date.")
+    from .catalog import seed_catalog
+    seed_catalog(get_db())
+    click.echo("Database is up to date. Missing starter catalog entries have been added.")
 
 
 def init_app(app):
