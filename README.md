@@ -27,7 +27,7 @@ The backend is Python/Flask with parameterized SQLite queries. The frontend is H
 | Page | Behavior |
 | --- | --- |
 | Onboarding `/` | Account creation, age/weight, current exercise habits, experience, goals, preferences, saved-step resume, and review. Completed accounts are directed to Home. |
-| Home `/home` | Daily completed/partial workouts, muscle groups, recorded calorie estimates, persistent food logging with servings and optional nutrients, workout suggestions, upcoming sessions, and recent activity. Choose another date to record past activity. |
+| Home `/home` | Daily completed/partial workouts, muscle groups, recorded calorie estimates, multi-food meals with live nutrition previews, meal reuse, daily nutrient totals, optional workout notes/estimates, workout suggestions, upcoming sessions, and recent activity. Choose another date to record past activity. |
 | Suggested Workouts `/workouts` | Search workouts, exercises, and routines; inspect workout descriptions, intensity, duration, and prescriptions; explore high/low intensity and recovery; choose or replace a routine and view 7/28-day schedules. |
 | Personal Progress `/progress` | Monthly completed/partial totals, weekly average, exercise improvements, keyboard-accessible daily calendar, workout and nutrition details, private weight check-ins and history, and saved milestones. Month/day URLs can be bookmarked. |
 | Settings `/settings` | View account details, update personal stats and workout preferences, and sign out. |
@@ -56,6 +56,7 @@ For a manual check, create an account; add a food with two servings; log a compl
 
 ## Team development
 
+- [Home logging update, demo walkthrough, and verification](docs/home-logging-update.md)
 - [Module structure, endpoint contract, and extension guide](docs/integration.md)
 - [Database diagram, ownership rules, and queries](docs/database.md)
 - [Initial schema](fitworld/migrations/001_initial.sql) and [additive schedule-link migration](fitworld/migrations/002_scheduled_workout_logs.sql)

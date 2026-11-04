@@ -21,7 +21,7 @@ export function renderWorkouts(container, data) {
   });
 }
 
-export function renderMeals(container, data) {
+export function renderMeals(container, data, onReuse) {
   container.replaceChildren();
   if (!data.meals.length) return empty(container, "No food logged for this day yet.");
   data.meals.forEach((meal) => {
@@ -32,9 +32,14 @@ export function renderMeals(container, data) {
       const parts = [["protein_g_per_serving", "g protein"], ["carbs_g_per_serving", "g carbs"], ["fat_g_per_serving", "g fat"], ["sodium_mg_per_serving", "mg sodium"]].map(([key, unit]) => item[key] === null ? `${unit.split(" ")[1]} unknown` : `${number(item.servings * item[key])} ${unit}`);
       card.append(el("p", "small muted", parts.join(" · ")));
     });
+    if (onReuse) {
+      const reuse = el("button", "text-button", "Use as new meal"); reuse.type = "button";
+      reuse.setAttribute("aria-label", `Use ${meal.meal_name} as a new meal`);
+      reuse.addEventListener("click", () => onReuse(meal)); card.append(reuse);
+    }
     const remove = el("button", "text-button remove-entry", "Remove food entry"); remove.type = "button";
     remove.setAttribute("aria-label", `Remove ${meal.meal_name}, ${number(meal.calories)} kcal`);
-    remove.addEventListener("click", () => removeEntry("meals", meal.id, data.date, document.body.dataset.page === "home" ? "#food-name" : "#day-heading")); card.append(remove); container.append(card);
+    remove.addEventListener("click", () => removeEntry("meals", meal.id, data.date, document.body.dataset.page === "home" ? "#meal-items input" : "#day-heading")); card.append(remove); container.append(card);
   });
 }
 

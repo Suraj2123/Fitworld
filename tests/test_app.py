@@ -94,6 +94,35 @@ class AppTest(unittest.TestCase):
         self.assertEqual(day["summary"]["completed"], 1)
         self.assertEqual(day["summary"]["partial"], 1)
 
+    def test_multi_food_meal_reuse_keeps_servings_unknowns_and_dates_independent(self):
+        items = [
+            {"food_name": "Oats", "serving_description": "cup", "servings": 2, "calories_per_serving": 150, "protein_g_per_serving": 5, "sodium_mg_per_serving": 0},
+            {"food_name": "Milk", "serving_description": "cup", "servings": 0.5, "calories_per_serving": 100, "protein_g_per_serving": None},
+        ]
+        response = self.write("activity/meals", {"meal_name": "Breakfast", "consumed_on": self.day, "items": items})
+        self.assertEqual(response.status_code, 201)
+        day = self.day_data()
+        meal = day["meals"][0]
+        self.assertEqual(meal["calories"], 350)
+        self.assertEqual(day["nutrition"]["protein_g"], {"known_total": 10.0, "missing_items": 1})
+        # The Home reuse flow resubmits the returned items after editing servings.
+        copied = meal["items"]
+        copied[0]["servings"] = 1
+        self.assertEqual(self.write("activity/meals", {"meal_name": meal["meal_name"], "consumed_on": "2026-01-06", "items": copied}).status_code, 201)
+        other_day = self.client.get("/api/activity?date=2026-01-06").json
+        self.assertEqual(other_day["nutrition"]["calories"]["known_total"], 200)
+        self.assertEqual(self.day_data()["nutrition"]["calories"]["known_total"], 350)
+        self.assertIsNone(other_day["meals"][0]["items"][1]["protein_g_per_serving"])
+        self.assertEqual(other_day["meals"][0]["items"][0]["sodium_mg_per_serving"], 0)
+
+    def test_manual_workout_optional_notes_and_estimates_persist(self):
+        response = self.write("activity/workouts", {"workout_name": "Walk", "performed_on": self.day, "duration_minutes": 25, "status": "partial", "estimated_calories": 90, "notes": "Stopped because of rain"})
+        self.assertEqual(response.status_code, 201)
+        workout = self.day_data()["workouts"][0]
+        self.assertEqual(workout["notes"], "Stopped because of rain")
+        self.assertEqual(workout["estimated_calories"], 90)
+        self.assertEqual(workout["status"], "partial")
+
     def test_bad_food_input_is_atomic(self):
         for changes in ({"servings": 0}, {"servings": True}, {"calories_per_serving": "NaN"}, {"food_name": " "}, {"protein_g_per_serving": -1}):
             with self.subTest(changes=changes):
