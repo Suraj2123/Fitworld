@@ -5,3 +5,5 @@ instance/
 .env
 .DS_Store
 artifacts/
+node_modules/
+.ruff_cache/

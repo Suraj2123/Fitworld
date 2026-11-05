@@ -8,7 +8,7 @@ from flask import Blueprint, g, jsonify, request, session
 from werkzeug.exceptions import BadRequest
 from werkzeug.security import check_password_hash, generate_password_hash
 
-from . import validation
+from . import profiles, validation
 from .db import get_db
 
 bp = Blueprint("api", __name__, url_prefix="/api")
@@ -28,15 +28,21 @@ def csrf_token():
 
 
 def current_user():
-    row = get_db().execute(
-        "SELECT id, email, display_name, onboarding_completed_at FROM users WHERE id = ?",
-        (session.get("user_id"),),
-    ).fetchone()
+    row = (
+        get_db()
+        .execute(
+            "SELECT id, email, display_name, onboarding_completed_at FROM users WHERE id = ?",
+            (session.get("user_id"),),
+        )
+        .fetchone()
+    )
     if row is None:
         return None
     user = dict(row)
     for key, table in (("profile", "user_profiles"), ("preferences", "workout_preferences")):
-        record = get_db().execute(f"SELECT * FROM {table} WHERE user_id = ?", (row["id"],)).fetchone()
+        record = (
+            get_db().execute(f"SELECT * FROM {table} WHERE user_id = ?", (row["id"],)).fetchone()
+        )
         user[key] = dict(record) if record else None
     return user
 
@@ -83,14 +89,19 @@ def register():
                 (email, name, hashed),
             )
     except sqlite3.IntegrityError:
-        return jsonify(error="This email is already registered. Sign in to continue.", fields={"email": "This email is already registered."}), 409
+        return jsonify(
+            error="This email is already registered. Sign in to continue.",
+            fields={"email": "This email is already registered."},
+        ), 409
     return jsonify(sign_in(cursor.lastrowid)), 201
 
 
 @bp.post("/login")
 def login():
     email, password, _ = validation.account(payload(), registering=False)
-    row = get_db().execute("SELECT id, password_hash FROM users WHERE email = ?", (email,)).fetchone()
+    row = (
+        get_db().execute("SELECT id, password_hash FROM users WHERE email = ?", (email,)).fetchone()
+    )
     if row is None or not check_password_hash(row["password_hash"], password):
         return jsonify(error="Email or password is incorrect."), 401
     return jsonify(sign_in(row["id"]))
@@ -105,24 +116,7 @@ def logout():
 @bp.put("/onboarding/profile")
 @authenticated
 def save_profile():
-    age, weight, units, experience, current = validation.profile(payload())
-    connection = get_db()
-    with connection:
-        connection.execute(
-            """INSERT INTO user_profiles
-               (user_id, age, weight_kg, unit_system, experience_level, current_workouts_per_week)
-               VALUES (?, ?, ?, ?, ?, ?)
-               ON CONFLICT(user_id) DO UPDATE SET age=excluded.age, weight_kg=excluded.weight_kg,
-               unit_system=excluded.unit_system, experience_level=excluded.experience_level,
-               current_workouts_per_week=excluded.current_workouts_per_week, updated_at=CURRENT_TIMESTAMP""",
-            (g.user["id"], age, weight, units, experience, current),
-        )
-        connection.execute(
-            """INSERT INTO body_measurements (user_id, measured_on, weight_kg)
-               VALUES (?, date('now'), ?) ON CONFLICT(user_id, measured_on)
-               DO UPDATE SET weight_kg=excluded.weight_kg""",
-            (g.user["id"], weight),
-        )
+    profiles.save_profile(get_db(), g.user["id"], payload())
     return jsonify(user=current_user())
 
 
@@ -131,18 +125,7 @@ def save_profile():
 def save_preferences():
     if not g.user["profile"]:
         return jsonify(error="Save your baseline before choosing preferences."), 409
-    goal, location, days, minutes = validation.preferences(payload())
-    connection = get_db()
-    with connection:
-        connection.execute(
-            """INSERT INTO workout_preferences
-               (user_id, primary_goal, training_location, target_days_per_week, session_minutes)
-               VALUES (?, ?, ?, ?, ?)
-               ON CONFLICT(user_id) DO UPDATE SET primary_goal=excluded.primary_goal,
-               training_location=excluded.training_location, target_days_per_week=excluded.target_days_per_week,
-               session_minutes=excluded.session_minutes, updated_at=CURRENT_TIMESTAMP""",
-            (g.user["id"], goal, location, days, minutes),
-        )
+    profiles.save_preferences(get_db(), g.user["id"], payload())
     return jsonify(user=current_user())
 
 

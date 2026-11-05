@@ -8,7 +8,7 @@ SQLite is built into Python and can also be accessed from C++. Flask serves HTML
 
 Run `python -m flask --app fitworld init-db` after installing `requirements.txt`. The database lives at `instance/fitworld.sqlite3`. Each SQL file in `fitworld/migrations/` is applied once, in filename order, and tracked in `schema_migrations`. Each migration runs in a transaction. Re-running `init-db` preserves accounts and history and inserts missing starter catalog definitions.
 
-`001_initial.sql` is the shared initial schema. `002_scheduled_workout_logs.sql` adds an optional schedule link to existing logs, with ownership checks and one completed log per scheduled session. Add a new numbered migration rather than editing either applied file. The runner is intended for one developer process at a time.
+`001_initial.sql` is the shared initial schema. `002` links scheduled workout logs; `003` adds the team's exercise definitions; `004` reconciles case-only exercise identities while preserving references; `005` adds muscle metadata for new historical snapshots. Add a new numbered migration rather than editing any applied file. Run `init-db` after pulling schema changes. The runner is intended for one developer process at a time.
 
 Every connection must execute `PRAGMA foreign_keys = ON`. `fitworld.db.get_db()` does so automatically. This is also required for command-line SQL tools and any future C++ connection. See [SQLite's foreign key documentation](https://www.sqlite.org/foreignkeys.html).
 
@@ -45,12 +45,12 @@ erDiagram
 | `users` | Case-insensitive unique email, display name, salted password hash, account creation and onboarding completion timestamps. Password hashes never leave the backend. |
 | `user_profiles` | One row per user: age, current weight in kg, preferred display unit, experience, and current weekly exercise frequency. Age 13–120 and weight 20–400 kg are input bounds for this prototype, not personalized fitness advice. |
 | `workout_preferences` | One row per user: primary goal, training location, desired days per week, and minutes per workout. A preference does not automatically select a routine. |
-| `body_measurements` | Weight history, one reading per user per UTC date. Saving the baseline upserts today's reading and updates current profile weight in the same transaction. |
-| `exercises`, `workouts`, `workout_exercises` | Shared catalog with ordered exercises, suggested sets/reps/time, intensity 1–10, and estimated workout duration. `init-db` adds missing starter examples without seeding user history. |
+| `body_measurements` | Weight history, one reading per user per explicit calendar date. A weight check-in upserts that day's reading and synchronizes the latest profile weight in the same transaction. Metadata-only profile edits do not create a reading. Older callers that omit the date retain a UTC fallback. |
+| `exercises`, `workouts`, `workout_exercises` | Shared catalog with ordered exercises, suggested sets/reps/time, intensity 1–10, and estimated workout duration. Exercise names use SQLite `NOCASE` identity. All exercise definitions are searchable independently of prescriptions. `init-db` adds missing starter examples without seeding user history. |
 | `routines`, `routine_workouts` | Reusable weekly plans. Days use ISO weekday numbers: Monday = 1, Sunday = 7. Week numbers start at 1. Future writers must check week numbers against `routines.duration_weeks`. |
 | `user_routines` | User enrollment history. A partial unique index permits at most one `active` routine per user; mark the old one `replaced` before adopting a new one, in one transaction. |
 | `scheduled_workouts` | Calendar dates for planned, completed, or skipped workouts. Optional enrollment is checked with a composite foreign key so it must belong to the same user. Dates are explicit rather than derived from the current routine. |
-| `workout_logs`, `exercise_logs` | Completed and partial workout history, actual reps/time/load, muscle groups, estimated calories, and notes. Snapshot names survive catalog edits or deletion. Logs may exist without a scheduled workout; linked logs must match that session's owner, workout, and date. |
+| `workout_logs`, `exercise_logs` | Completed and partial workout history, actual reps/time/load, muscle groups, estimated calories, and notes. Snapshot names and new logs' muscle metadata survive catalog edits or deletion. The nullable JSON `muscle_groups_snapshot` records groups and their guide/actual-set source; legacy missing data remains unknown. Logs may exist without a scheduled workout; linked logs must match that session's owner, workout, and date. |
 | `nutrition_logs`, `nutrition_items` | Manual or photo meal entry, servings, and per-serving calories/macronutrients/sodium. Multiply each nutrient by servings when aggregating. `NULL` means unknown nutrient; zero means known zero. Photo analysis is not implemented. |
 | `progress_photos` | Private storage keys and dates. Upload, authorization, retrieval, and removal of actual images require future endpoints. Do not serve these from `static/`. |
 | `goals`, `milestones` | Dated numeric or custom goals and achieved milestones. A selected onboarding goal is a preference; no fabricated milestones or workout history are inserted. |
@@ -63,7 +63,7 @@ erDiagram
 - Catalog entries referenced by workout or routine prescriptions are restricted from deletion. Historical logs keep names and permit catalog references to become `NULL`.
 - Removing a routine enrollment deletes its scheduled rows. Preserve historical enrollment rows by changing their status. Actual workout logs are independent and remain intact.
 - SQL `CHECK`, `UNIQUE`, and foreign key constraints cover enum values, numeric ranges, ordering, one active routine, and relationships. A trigger prevents marking an existing account complete before its profile and preferences exist. Future SQL writers must preserve that onboarding state and validate date formats; SQLite stores dates as text.
-- Store mass as kilograms, duration as seconds in actual logs, plan length as minutes, and sodium as milligrams. Timestamps are UTC. The current onboarding weight history uses UTC dates; future workout and meal endpoints should accept an explicit user-local calendar date for their date columns.
+- Store mass as kilograms, duration as seconds in actual logs, plan length as minutes, and sodium as milligrams. Timestamps are UTC. Check-ins, workouts, and meals use explicit user-local calendar dates. Current clients send those dates; older profile callers without a date retain the legacy UTC fallback.
 - Weight and age remain private account data. Profile data is stored in the local SQLite file, not in browser storage or the signed session cookie. The cookie carries an account ID, CSRF token, and expiry metadata.
 
 ## API handoff
@@ -76,7 +76,7 @@ All responses are JSON. Read `GET /api/session` first. Include its `csrf_token` 
 | POST | `/api/register` | `display_name`, `email`, `password`. Creates an incomplete account, signs it in, returns user and rotated CSRF token; HTTP 201. |
 | POST | `/api/login` | `email`, `password`. Returns user and rotated CSRF token. |
 | POST | `/api/logout` | Empty JSON object. Clears session; returns `user: null` and a fresh token. |
-| PUT | `/api/onboarding/profile` | `age`, `weight`, `unit_system` (`metric` or `imperial`), `experience_level`, `current_workouts_per_week`. Accepts full step data; converts weight from lb when imperial. |
+| PUT | `/api/onboarding/profile` | `age`, `weight`, `unit_system` (`metric` or `imperial`), `experience_level`, `current_workouts_per_week`; optional `measured_on` and boolean `record_weight`. Full metadata step; converts weight from lb when imperial. A metadata-only save with `record_weight: false` preserves the latest weight even if the loaded form is stale. |
 | PUT | `/api/onboarding/preferences` | `primary_goal`, `training_location`, `target_days_per_week`, `session_minutes`. Requires baseline first. |
 | POST | `/api/onboarding/complete` | Empty JSON object. Requires both steps; sets completion timestamp once. Safe to retry. |
 

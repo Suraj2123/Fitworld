@@ -20,6 +20,8 @@ Open [Fitworld locally](http://127.0.0.1:5001). Create an account, complete onbo
 
 `init-db` applies pending numbered migrations without clearing existing accounts or history, then inserts missing starter catalog entries. It can be run again safely. The starter catalog contains example exercises and four-week routines; user activity starts empty. Existing catalog descriptions and prescriptions are preserved when seeding is repeated.
 
+Run `init-db` again after pulling schema changes. The quality-review migrations preserve existing exercise references and add historical muscle snapshots; existing logs without those details remain explicitly unknown.
+
 The backend is Python/Flask with parameterized SQLite queries. The frontend is HTML, CSS, and native JavaScript modules; it requires no Node installation, frontend build, database service, or external API credentials. Node is only an optional development tool for JavaScript syntax checks.
 
 ## Pages
@@ -28,7 +30,7 @@ The backend is Python/Flask with parameterized SQLite queries. The frontend is H
 | --- | --- |
 | Onboarding `/` | Account creation, age/weight, current exercise habits, experience, goals, preferences, saved-step resume, and review. Completed accounts are directed to Home. |
 | Home `/home` | Daily completed/partial workouts, muscle groups, recorded calorie estimates, persistent food logging with servings and optional nutrients, workout suggestions, upcoming sessions, and recent activity. Choose another date to record past activity. |
-| Suggested Workouts `/workouts` | Search workouts, exercises, and routines; inspect workout descriptions, intensity, duration, and prescriptions; explore high/low intensity and recovery; choose or replace a routine and view 7/28-day schedules. |
+| Suggested Workouts `/workouts` | Search workouts, standalone exercise guides, and routines; inspect descriptions, intensity, duration, and prescriptions; explore high/low intensity and recovery; choose, replace, or restart a routine and view 7/28-day schedules. |
 | Personal Progress `/progress` | Monthly completed/partial totals, weekly average, exercise improvements, keyboard-accessible daily calendar, workout and nutrition details, private weight check-ins and history, and saved milestones. Month/day URLs can be bookmarked. |
 | Settings `/settings` | View account details, update personal stats and workout preferences, and sign out. |
 
@@ -56,6 +58,8 @@ For a manual check, create an account; add a food with two servings; log a compl
 
 ## Team development
 
+- [Contribution workflow and automated quality checks](CONTRIBUTING.md)
+- [Design patterns, review findings, and change guidance](docs/design-and-quality.md)
 - [Module structure, endpoint contract, and extension guide](docs/integration.md)
 - [Database diagram, ownership rules, and queries](docs/database.md)
 - [Initial schema](fitworld/migrations/001_initial.sql) and [additive schedule-link migration](fitworld/migrations/002_scheduled_workout_logs.sql)

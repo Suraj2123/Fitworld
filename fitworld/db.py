@@ -28,7 +28,9 @@ def migrate():
         "(version TEXT PRIMARY KEY, applied_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP)"
     )
     connection.commit()
-    applied = {row["version"] for row in connection.execute("SELECT version FROM schema_migrations")}
+    applied = {
+        row["version"] for row in connection.execute("SELECT version FROM schema_migrations")
+    }
     for path in sorted((Path(__file__).parent / "migrations").glob("*.sql")):
         if path.name not in applied:
             # Files are trusted repository SQL; changes and version record commit together.
@@ -49,6 +51,7 @@ def init_db_command():
     """Apply pending migrations without deleting existing data."""
     migrate()
     from .catalog import seed_catalog
+
     seed_catalog(get_db())
     click.echo("Database is up to date. Missing starter catalog entries have been added.")
 

@@ -12,10 +12,12 @@ The pages share authenticated navigation, data contracts, and UI primitives. Pag
 | `fitworld/activity.py` | Validate and persist workout sets and meals, check scheduled-session ownership, and delete private activity atomically. |
 | `fitworld/reports.py` | Daily workout/nutrition read model used by both Home and Progress. Nutrient totals preserve unknown values. |
 | `fitworld/progress.py` | Month boundaries, complete/partial calendar counts, weekly averages, exercise comparisons, and weight history. |
+| `fitworld/profiles.py`, `fitworld/measurements.py` | Profile/preference writes and shared dated weight check-ins, with explicit transaction ownership and metadata-only edit handling. |
 | `fitworld/validation.py` | Shared typed form validation and canonical kg conversion for body weight. |
 | `fitworld/views.py` | Page access control and server-rendered routes. |
 | `templates/app_base.html`, `static/app.css` | Navigation, dialogs, shared layouts, form controls, typography, and color tokens. Page styles add composition rather than replacing these controls. |
 | `static/js/client.js` | JSON requests, CSRF handling, local calendar dates, number/unit formatting, safe DOM creation, and form feedback. |
+| `static/js/http.js` | Shared transport for both onboarding and app pages; CSRF rotation, timeout, and structured errors without page/session side effects. |
 | `static/js/activity-ui.js` | Render saved workout, food, and nutrition details consistently across pages. |
 | `static/js/workout-ui.js` | Shared workout cards, details, actual-set logging, and schedule rendering. |
 | `static/home.js`, `static/js/workouts.js`, `static/js/progress.js` | Page-specific state and composition. Each page loads its own module. |
@@ -41,7 +43,8 @@ All app endpoints require an authenticated, onboarded user. Writes require the s
 | --- | --- |
 | `GET /api/workouts?q=…` | `{workouts: [...]}` ordered by active routine, goal, experience, duration, and workout-space preferences. Each entry includes ordered prescriptions and equipment. Search covers workout names/descriptions and exercise names. |
 | `GET /api/workouts/<id>` | `{workout: {...}}` with descriptions, intensity, minutes, and exercises. |
-| `GET /api/routines?q=…` | `{routines: [...], current: object or null}`. Each routine includes its explicit week/day schedule. |
+| `GET /api/exercises?q=…` | `{exercises: [...]}` searches names, descriptions, muscle groups, and equipment, including definitions outside starter workouts. |
+| `GET /api/routines?q=…&today=YYYY-MM-DD` | `{routines: [...], current: object or null}`. Each routine includes its explicit week/day schedule. A current enrollment also includes `ends_on` and `is_finished`; the UI permits restarting it. |
 | `POST /api/routines/<id>/select` | `{starts_on}`. Returns `{current}`. The same routine/start is safe to select again. Replacing a plan preserves earlier sessions and skips future planned sessions from the old enrollment. |
 | `GET /api/schedule?from=YYYY-MM-DD&to=YYYY-MM-DD` | `{schedule: [...]}` scoped to the account. Maximum range: 366 days. |
 | `GET /api/activity?date=YYYY-MM-DD` | `{date, workouts, meals, nutrition, summary}`. Used by Home and the Progress day detail. |
@@ -63,6 +66,8 @@ Validation returns HTTP 422 with `{error, fields}`. Unknown private records retu
 - Meals and workout totals are read independently, so adding food cannot multiply workout counts or calories burned. Calories burned are recorded estimates; blank values remain unknown.
 - Nutrition multiplies per-serving values by servings. Each nutrient returns `known_total` and `missing_items`; an unknown protein value is distinct from zero protein. Partial totals are labeled.
 - Weight history returns the last 30 measurements up to the selected month's end. Graphs are accompanied by an accessible table with the exact dates and preferred-unit values. There is no claim that every user should change weight in one direction.
+- Profile updates accept optional `measured_on` and `record_weight`. Current clients send the browser's local date and explicit weight intent. Metadata-only saves preserve the latest weight; older callers without a date retain a UTC fallback.
+- New workout logs snapshot their muscle metadata. Legacy logs without recorded sets leave that detail unknown rather than inferring it from today's catalog.
 
 ## Adding the next feature
 
