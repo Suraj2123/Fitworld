@@ -9,7 +9,7 @@ from . import activity, catalog, measurements, progress, reports
 from .api import authenticated, invalid_form, payload
 from .db import get_db
 # Imported form for create_exercises
-from .validation import ValidationError, iso_date, Form 
+from .validation import Form, ValidationError, iso_date
 
 bp = Blueprint("app_api", __name__, url_prefix="/api")
 bp.register_error_handler(ValidationError, invalid_form)
