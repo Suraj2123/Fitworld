@@ -22,7 +22,9 @@ import { renderWeeklyGoal } from "./js/weekly-goal-ui.js";
 
 import { initMealComposer } from "./js/meal-composer.js";
 
+import { initMealLibrary } from "./js/meal-library.js";
 const mealComposer = initMealComposer();
+const mealLibrary = initMealLibrary(mealComposer);
 const dateInput = $("#home-date");
 dateInput.value = new URLSearchParams(location.search).get("date") || localDate();
 if (!dateInput.value || dateInput.value > localDate() || dateInput.value < "1900-01-01")
@@ -204,6 +206,7 @@ $("#food-form").addEventListener("submit", (event) =>
       });
     }
     mealComposer.reset();
+    mealLibrary.refresh();
     $("#meal-items input").focus();
     notify(`Meal saved for ${dateLabel(selected)}.`);
     refresh().catch(showError);
@@ -261,6 +264,6 @@ async function loadRoutine() {
 }
 async function boot() {
   await session;
-  await Promise.all([loadCatalog(), loadRoutine(), refresh()]);
+  await Promise.all([loadCatalog(), loadRoutine(), refresh(), mealLibrary.refresh()]);
 }
 boot().catch(showError);

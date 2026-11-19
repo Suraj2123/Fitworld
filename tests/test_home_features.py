@@ -37,3 +37,13 @@ class HomeFeatureTests(AppCase):
         response = self.write(f"activity/meals/{log_id}", self.meal_payload(), "PUT", other)
         self.assertEqual(response.status_code, 404)
         self.assertEqual(self.day_data()["nutrition"]["calories"]["known_total"], 300)
+
+    def test_recent_foods_use_latest_values_and_keep_accounts_separate(self):
+        self.food(calories_per_serving=150)
+        self.food(calories_per_serving=200)
+        foods = self.client.get("/api/foods/recent").json["foods"]
+        self.assertEqual(len(foods), 1)
+        self.assertEqual(foods[0]["calories_per_serving"], 200)
+        other = self.app.test_client()
+        self.create_account(other, "other@example.com")
+        self.assertEqual(other.get("/api/foods/recent").json["foods"], [])

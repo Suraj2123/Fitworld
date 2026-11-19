@@ -125,6 +125,23 @@ export function initMealComposer() {
   }
   return {
     items,
+    addFood(food) {
+      if (form.dataset.busy === "true") return;
+      const draft = items();
+      if (
+        draft.length === 1 &&
+        Object.entries(draft[0]).every(([key, value]) =>
+          key === "servings" ? value === "1" : value === "",
+        )
+      )
+        container.replaceChildren();
+      if (container.children.length >= 50) {
+        notify("A meal can contain up to 50 foods.");
+        return;
+      }
+      add({ ...food, servings: 1 });
+      notify("Food added to your draft. Adjust servings before saving.");
+    },
     reset,
     editing: () => editing,
     reuse: (meal) => load(meal),

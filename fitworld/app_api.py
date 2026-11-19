@@ -181,3 +181,9 @@ def remove_custom_workout(workout_id):
 @onboarded
 def edit_meal(log_id):
     return jsonify(id=activity.log_meal(get_db(), g.user["id"], payload(), log_id))
+
+
+@bp.get("/foods/recent")
+@onboarded
+def get_recent_foods():
+    return jsonify(foods=reports.recent_foods(get_db(), g.user["id"]))
