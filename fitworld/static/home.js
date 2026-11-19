@@ -18,7 +18,7 @@ import {
 } from "./js/client.js";
 import { renderWorkouts, renderMeals, renderNutrition } from "./js/activity-ui.js";
 import { initWorkoutLogging, renderCards, renderSchedule } from "./js/workout-ui.js";
-import { renderWeeklyGoal, weeklyGoalLoading, weeklyGoalError } from "./js/weekly-goal-ui.js";
+import { renderWeeklyGoal } from "./js/weekly-goal-ui.js";
 
 import { initMealComposer } from "./js/meal-composer.js";
 
@@ -40,40 +40,70 @@ function updateDateLabels() {
 }
 updateDateLabels();
 
+function sectionError(container, message, retry) {
+  container.removeAttribute("aria-busy");
+  empty(container, message);
+  const button = el("button", "secondary-button", "Retry");
+  button.type = "button";
+  button.addEventListener("click", retry);
+  container.append(button);
+}
+
 async function refresh() {
   const current = ++revision,
     selected = dateInput.value || localDate();
-  const goal = $("#weekly-goal");
-  weeklyGoalLoading(goal);
   updateDateLabels();
-  $("#today-stats").setAttribute("aria-busy", "true");
-  $("#today-stats").replaceChildren(el("p", "muted", "Loading your day…"));
+  async function section(selector, load, render, failure) {
+    const container = $(selector);
+    async function run() {
+      if (current !== revision) return;
+      container.setAttribute("aria-busy", "true");
+      empty(container, "Loading…");
+      try {
+        const data = await load();
+        if (current !== revision) return;
+        render(data);
+      } catch {
+        if (current !== revision) return;
+        failure?.();
+        sectionError(container, "This section couldn’t load. Try again.", run);
+      } finally {
+        if (current === revision) container.removeAttribute("aria-busy");
+      }
+    }
+    return run();
+  }
   $("#today-muscles").textContent = "";
   $("#daily-nutrition").replaceChildren();
   $("#calorie-total").textContent = "—";
   $("#workout-total").textContent = "—";
   empty($("#food-list"), "Loading food entries…");
   empty($("#today-workouts"), "Loading workouts…");
-  let day, recent, upcoming, weekly;
-  try {
-    [day, recent, upcoming, weekly] = await Promise.all([
-      api(`activity?date=${selected}`),
-      api("activity/recent"),
-      api(`schedule?from=${localDate()}&to=${addDays(localDate(), 6)}`),
-      api(`progress/weekly?date=${selected}&today=${localDate()}`).catch(() => null),
-    ]);
-  } catch (error) {
-    if (current !== revision) return;
-    weeklyGoalError(goal);
-    $("#today-stats").removeAttribute("aria-busy");
-    empty($("#today-stats"), "Could not load this day. Select the date again to retry.");
-    empty($("#food-list"), "Food entries could not be loaded.");
-    empty($("#today-workouts"), "Workouts could not be loaded.");
-    throw error;
-  }
-  if (current !== revision) return;
-  if (weekly) renderWeeklyGoal(goal, weekly);
-  else weeklyGoalError(goal);
+  await Promise.all([
+    section(
+      "#today-stats",
+      () => api(`activity?date=${selected}`),
+      renderDay,
+      () => {
+        empty($("#food-list"), "Food entries could not be loaded. Retry your daily check-in.");
+        empty($("#today-workouts"), "Workouts could not be loaded. Retry your daily check-in.");
+      },
+    ),
+    section(
+      "#weekly-goal",
+      () => api(`progress/weekly?date=${selected}&today=${localDate()}`),
+      (data) => renderWeeklyGoal($("#weekly-goal"), data),
+    ),
+    section(
+      "#home-schedule",
+      () => api(`schedule?from=${localDate()}&to=${addDays(localDate(), 6)}`),
+      (data) => renderSchedule($("#home-schedule"), data.schedule),
+    ),
+    section("#recent-workouts", () => api("activity/recent"), renderRecent),
+  ]);
+}
+
+function renderDay(day) {
   const summary = day.summary,
     stats = $("#today-stats");
   stats.replaceChildren(
@@ -109,7 +139,9 @@ async function refresh() {
   $("#workout-total").textContent = number(summary.duration_minutes);
   renderWorkouts($("#today-workouts"), day);
   renderMeals($("#food-list"), day, mealComposer.reuse);
-  renderSchedule($("#home-schedule"), upcoming.schedule);
+}
+
+function renderRecent(recent) {
   const container = $("#recent-workouts");
   container.replaceChildren();
   if (!recent.workouts.length)
@@ -131,7 +163,6 @@ async function refresh() {
     );
     container.append(card);
   });
-  $("#page-error").hidden = true;
 }
 
 function selectDate(value) {
@@ -202,19 +233,30 @@ document.addEventListener("fitworld:activity", (event) => {
   refresh().catch(showError);
 });
 
+async function loadCatalog() {
+  $("#open-workout-log").disabled = true;
+  try {
+    const data = await api("workouts");
+    initWorkoutLogging(data.workouts);
+    renderCards($("#home-suggestions"), data.workouts.slice(0, 4));
+  } catch {
+    sectionError($("#home-suggestions"), "Workout suggestions couldn’t load.", loadCatalog);
+  }
+}
+async function loadRoutine() {
+  try {
+    const routines = await api(`routines?today=${localDate()}`);
+    $("#home-routine").textContent = routines.current
+      ? routines.current.is_finished
+        ? "Your last plan is complete. Find your next rhythm."
+        : `Your rhythm: ${routines.current.name}. Keep showing up for you.`
+      : "Your next chapter can start with a single session.";
+  } catch {
+    sectionError($("#home-routine"), "Your routine couldn’t load.", loadRoutine);
+  }
+}
 async function boot() {
   await session;
-  const [workouts, routines] = await Promise.all([
-    api("workouts"),
-    api(`routines?today=${localDate()}`),
-  ]);
-  initWorkoutLogging(workouts.workouts);
-  renderCards($("#home-suggestions"), workouts.workouts.slice(0, 4));
-  $("#home-routine").textContent = routines.current
-    ? routines.current.is_finished
-      ? "Your last plan is complete. Find your next rhythm."
-      : `Your rhythm: ${routines.current.name}. Keep showing up for you.`
-    : "Your next chapter can start with a single session.";
-  await refresh();
+  await Promise.all([loadCatalog(), loadRoutine(), refresh()]);
 }
 boot().catch(showError);

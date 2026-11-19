@@ -141,6 +141,23 @@ const assert = require("node:assert/strict");
   assert.equal(await page.locator("#workout-name").inputValue(), "Protected walk");
   assert.equal(await page.locator("#workout-name").isEnabled(), true);
   await page.unroute("**/api/activity/workouts");
+  for (const endpoint of ["schedule?*", "activity/recent", "workouts", "routines?*"]) {
+    await page.route(`**/api/${endpoint}`, (route) =>
+      route.fulfill({ status: 503, body: "Unavailable" }),
+    );
+  }
+  await page.reload();
+  await page.waitForSelector("#today-stats:not([aria-busy]) .stat-card");
+  assert((await page.locator("#food-list").innerText()).includes("Breakfast"));
+  assert.equal(
+    await page.locator("#home-schedule").getByRole("button", { name: "Retry" }).count(),
+    1,
+  );
+  await page.unrouteAll();
+  await page.locator("#home-schedule").getByRole("button", { name: "Retry" }).click();
+  await page.waitForFunction(
+    () => !document.querySelector("#home-schedule").textContent.includes("couldn’t"),
+  );
   await page.locator("#food-heading").click();
   await page.waitForTimeout(5100);
   await page.evaluate(() => window.scrollTo(0, 0));
