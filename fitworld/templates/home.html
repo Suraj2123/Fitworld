@@ -39,10 +39,16 @@
   <section aria-labelledby="today-title">
     <div class="section-heading">
       <h2 id="today-title">Your daily check-in</h2>
-      <label class="date-control">
-        Viewing
-        <input type="date" id="home-date">
-      </label>
+      <div class="day-navigation" aria-label="Daily log navigation">
+        <button type="button"
+                id="previous-day"
+                class="secondary-button"
+                aria-label="Previous day">←</button><label class="date-control">Viewing
+          <input type="date" id="home-date" min="1900-01-01"></label><button type="button"
+                                                                             id="next-day"
+                                                                             class="secondary-button"
+                                                                             aria-label="Next day">→</button><button type="button" id="today-button" class="text-button">Today</button>
+      </div>
     </div>
     <div id="today-stats" class="stats-grid" aria-busy="true">
       <p class="muted">Loading your day…</p>
@@ -50,6 +56,7 @@
     <p id="today-muscles" class="small muted"></p>
   </section>
   {% include "_weekly_goal.html" %}
+  <p id="logging-date" class="logging-date" role="status"></p>
   <div class="home-columns">
     <div class="home-main-column">
       <section aria-labelledby="suggested-heading">
@@ -98,8 +105,24 @@
                                                                            name="status">
             <option value="completed">Completed</option>
             <option value="partial">Stopped early</option>
-          </select><button type="submit"
-                           class="primary-button">Add workout <span aria-hidden="true">＋</span></button>
+          </select>
+          <details>
+            <summary>Workout details <span class="optional">(optional)</span></summary>
+            <label for="manual-calories">Estimated calories burned (kcal)</label><input id="manual-calories"
+                                                                                        name="estimated_calories"
+                                                                                        type="number"
+                                                                                        min="0"
+                                                                                        max="50000"
+                                                                                        step="any"
+                                                                                        placeholder="Leave blank if unknown"><label for="manual-notes">Notes</label><textarea id="manual-notes"
+                                                                                                                                                                              name="notes"
+                                                                                                                                                                              maxlength="2000"
+                                                                                                                                                                              rows="3"
+                                                                                                                                                                              placeholder="How did this session feel?"></textarea>
+          </details>
+          <p id="workout-date-note" class="small muted"></p>
+          <button type="submit"
+                  class="primary-button">Add workout <span aria-hidden="true">＋</span></button>
         </form>
         <p class="workout-time-total"
            role="status">Total workout time: <strong id="workout-total">0</strong> minutes</p>
@@ -120,56 +143,73 @@
         <p class="small muted">Enter the nutrition for one serving. We’ll multiply it by the number of servings.</p>
         <form id="food-form">
           <div class="form-error error-box" role="alert" tabindex="-1" hidden></div>
-          <label for="food-name">Food name</label><input id="food-name"
-                                                         name="food_name"
-                                                         type="text"
-                                                         placeholder="e.g. Oatmeal"
-                                                         maxlength="120"
-                                                         required>
-          <div class="form-grid">
-            <div>
-              <label for="serving-size">Serving size</label><input id="serving-size"
-                                                                   name="serving_description"
-                                                                   placeholder="e.g. 1 cup"
-                                                                   maxlength="120"
-                                                                   required>
-            </div>
-            <div>
-              <label for="servings">Servings eaten</label><input id="servings"
-                                                                 name="servings"
-                                                                 type="number"
-                                                                 min="0.01"
-                                                                 max="1000"
-                                                                 step="any"
-                                                                 value="1"
-                                                                 required>
-            </div>
-          </div>
-          <label for="food-calories">Calories per serving (kcal)</label><input id="food-calories"
-                                                                               name="calories_per_serving"
-                                                                               type="number"
-                                                                               placeholder="e.g. 150"
-                                                                               min="0"
-                                                                               max="100000"
-                                                                               step="any"
-                                                                               required>
-          <details>
-            <summary>Nutrition details <span class="optional">(optional)</span></summary>
-            <p class="small muted">Leave unknown values empty.</p>
-            <div class="form-grid">
-              {% for name, label in [('protein_g_per_serving','Protein (g)'),('carbs_g_per_serving','Carbs (g)'),('fat_g_per_serving','Fat (g)'),('sodium_mg_per_serving','Sodium (mg)')] %}<div><label for="food-{{ name }}">{{ label }}</label><input id="food-{{ name }}"
-                                                                                                                                                                                                                                                        name="{{ name }}"
-                                                                                                                                                                                                                                                        type="number"
-                                                                                                                                                                                                                                                        min="0"
-                                                                                                                                                                                                                                                        max="1000000"
-                                                                                                                                                                                                                                                        step="any"></div>{% endfor %}
-            </div>
-          </details>
+          <label for="meal-name">Meal name <span class="optional">(optional)</span></label><input id="meal-name"
+                                                                                                  name="meal_name"
+                                                                                                  maxlength="120"
+                                                                                                  placeholder="e.g. Breakfast; defaults to the first food">
+          <div id="meal-items"></div>
+          <button type="button"
+                  id="add-meal-item"
+                  class="secondary-button">＋ Add another food</button>
+          <div id="meal-preview"
+               class="meal-preview"
+               role="status"
+               aria-live="polite"></div>
           <p id="food-date-note" class="small muted"></p>
-          <button type="submit"
-                  class="primary-button">Add food <span aria-hidden="true">＋</span></button>
+          <div class="button-row">
+            <button type="submit" class="primary-button">Save meal</button><button type="button" id="clear-meal" class="text-button">Clear draft</button>
+          </div>
         </form>
+        <template id="meal-item-template">
+          <fieldset class="meal-item">
+            <legend>Food</legend>
+            <label data-label="food_name">Food name</label><input data-field="food_name"
+                                                                  type="text"
+                                                                  placeholder="e.g. Oatmeal"
+                                                                  maxlength="120"
+                                                                  required>
+            <div class="form-grid">
+              <div>
+                <label data-label="serving_description">Serving size</label><input data-field="serving_description"
+                                                                                   placeholder="e.g. 1 cup"
+                                                                                   maxlength="120"
+                                                                                   required>
+              </div>
+              <div>
+                <label data-label="servings">Servings eaten</label><input data-field="servings"
+                                                                          type="number"
+                                                                          min="0.01"
+                                                                          max="1000"
+                                                                          step="any"
+                                                                          value="1"
+                                                                          required>
+              </div>
+            </div>
+            <label data-label="calories_per_serving">Calories per serving (kcal)</label><input data-field="calories_per_serving"
+                                                                                               type="number"
+                                                                                               min="0"
+                                                                                               max="100000"
+                                                                                               step="any"
+                                                                                               placeholder="e.g. 150"
+                                                                                               required>
+            <details>
+              <summary>Nutrition details <span class="optional">(optional)</span></summary>
+              <p class="small muted">Leave unknown values empty.</p>
+              <div class="form-grid">
+                {% for name, label in [('protein_g_per_serving','Protein (g)'),('carbs_g_per_serving','Carbs (g)'),('fat_g_per_serving','Fat (g)'),('sodium_mg_per_serving','Sodium (mg)')] %}<div><label data-label="{{ name }}">{{ label }}</label><input data-field="{{ name }}"
+                                                                                                                                                                                                                                                            type="number"
+                                                                                                                                                                                                                                                            min="0"
+                                                                                                                                                                                                                                                            max="1000000"
+                                                                                                                                                                                                                                                            step="any"></div>{% endfor %}
+              </div>
+            </details>
+            <button type="button" class="text-button remove-draft-food">Remove food</button>
+          </fieldset>
+        </template>
         <div class="food-total">Calories consumed <strong><span id="calorie-total">0</span> <small>kcal</small></strong></div>
+        <h3 class="nutrition-heading">Daily nutrition</h3>
+        <div id="daily-nutrition" class="home-nutrition"></div>
+        <p class="small muted">Partial totals exclude foods with unknown nutrients.</p>
         <div id="food-list"></div>
       </section>
     </aside>

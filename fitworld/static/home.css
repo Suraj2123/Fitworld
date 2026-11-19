@@ -143,3 +143,93 @@
     opacity: 0.4;
   }
 }
+
+/* Logging controls stay readable on both desktop and narrow screens. */
+.day-navigation {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.day-navigation .secondary-button {
+  padding: 9px 12px;
+}
+.logging-date {
+  padding: 12px 16px;
+  background: var(--soft);
+  border-left: 3px solid var(--pine);
+  border-radius: 6px;
+  font-size: 13px;
+}
+.meal-item {
+  min-width: 0;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 14px;
+  margin: 20px 0 12px;
+}
+.meal-item legend {
+  font-size: 13px;
+  font-weight: 600;
+  padding: 0 6px;
+}
+.meal-item .remove-draft-food {
+  margin-top: 12px;
+}
+.meal-preview {
+  margin-top: 18px;
+  padding: 14px;
+  background: var(--soft);
+  border-radius: 10px;
+  font-size: 13px;
+}
+.meal-preview p {
+  line-height: 1.8;
+  margin: 8px 0;
+}
+.nutrition-heading {
+  margin-top: 20px;
+}
+.home-nutrition {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+.home-nutrition strong,
+.home-nutrition span {
+  display: block;
+}
+.home-nutrition strong {
+  font-size: 17px;
+}
+.home-nutrition span {
+  font-size: 12px;
+  color: var(--muted);
+  margin-top: 5px;
+}
+#workout-form details {
+  margin-top: 16px;
+}
+#workout-form textarea {
+  width: 100%;
+  resize: vertical;
+}
+@media (max-width: 480px) {
+  .day-navigation {
+    width: 100%;
+  }
+  .day-navigation .date-control {
+    flex: 1;
+  }
+  .home-main-column .compact-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.meal-item > input,
+.meal-item > .form-grid {
+  margin-bottom: 16px;
+}
+#workout-form details > input {
+  margin-bottom: 16px;
+}

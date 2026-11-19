@@ -16,30 +16,61 @@ import {
   notify,
   showError,
 } from "./js/client.js";
-import { renderWorkouts, renderMeals } from "./js/activity-ui.js";
+import { renderWorkouts, renderMeals, renderNutrition } from "./js/activity-ui.js";
 import { initWorkoutLogging, renderCards, renderSchedule } from "./js/workout-ui.js";
 import { renderWeeklyGoal, weeklyGoalLoading, weeklyGoalError } from "./js/weekly-goal-ui.js";
 
+import { initMealComposer } from "./js/meal-composer.js";
+
+const mealComposer = initMealComposer();
 const dateInput = $("#home-date");
 dateInput.value = new URLSearchParams(location.search).get("date") || localDate();
-if (!dateInput.value) dateInput.value = localDate();
+if (!dateInput.value || dateInput.value > localDate() || dateInput.value < "1900-01-01")
+  dateInput.value = localDate();
 dateInput.max = localDate();
 let revision = 0;
+function updateDateLabels() {
+  const label = dateLabel(dateInput.value, { month: "long", day: "numeric", year: "numeric" });
+  $("#logging-date").textContent = `Food and manual workouts will be saved for ${label}.`;
+  $("#food-date-note").textContent = `Saving this meal for ${label}.`;
+  $("#workout-date-note").textContent = `Saving this workout for ${label}.`;
+  $("#next-day").disabled = dateInput.value >= localDate();
+  $("#previous-day").disabled = dateInput.value <= "1900-01-01";
+  $("#today-button").disabled = dateInput.value === localDate();
+}
+updateDateLabels();
 
 async function refresh() {
   const current = ++revision,
     selected = dateInput.value || localDate();
   const goal = $("#weekly-goal");
   weeklyGoalLoading(goal);
-  const [day, recent, upcoming, weekly] = await Promise.all([
-    api(`activity?date=${selected}`),
-    api("activity/recent"),
-    api(`schedule?from=${localDate()}&to=${addDays(localDate(), 6)}`),
-    api(`progress/weekly?date=${selected}&today=${localDate()}`).catch(() => null),
-  ]).catch((error) => {
-    if (current === revision) weeklyGoalError(goal);
+  updateDateLabels();
+  $("#today-stats").setAttribute("aria-busy", "true");
+  $("#today-stats").replaceChildren(el("p", "muted", "Loading your day…"));
+  $("#today-muscles").textContent = "";
+  $("#daily-nutrition").replaceChildren();
+  $("#calorie-total").textContent = "—";
+  $("#workout-total").textContent = "—";
+  empty($("#food-list"), "Loading food entries…");
+  empty($("#today-workouts"), "Loading workouts…");
+  let day, recent, upcoming, weekly;
+  try {
+    [day, recent, upcoming, weekly] = await Promise.all([
+      api(`activity?date=${selected}`),
+      api("activity/recent"),
+      api(`schedule?from=${localDate()}&to=${addDays(localDate(), 6)}`),
+      api(`progress/weekly?date=${selected}&today=${localDate()}`).catch(() => null),
+    ]);
+  } catch (error) {
+    if (current !== revision) return;
+    weeklyGoalError(goal);
+    $("#today-stats").removeAttribute("aria-busy");
+    empty($("#today-stats"), "Could not load this day. Select the date again to retry.");
+    empty($("#food-list"), "Food entries could not be loaded.");
+    empty($("#today-workouts"), "Workouts could not be loaded.");
     throw error;
-  });
+  }
   if (current !== revision) return;
   if (weekly) renderWeeklyGoal(goal, weekly);
   else weeklyGoalError(goal);
@@ -73,12 +104,11 @@ async function refresh() {
   $("#today-muscles").textContent = summary.muscle_groups.length
     ? `Muscle groups: ${summary.muscle_groups.join(" · ")}`
     : "Every starting point is welcome. Choose a workout when you’re ready.";
-  $("#food-date-note").textContent =
-    `Saving food for ${dateLabel(selected, { month: "long", day: "numeric", year: "numeric" })}.`;
+  renderNutrition($("#daily-nutrition"), day.nutrition);
   $("#calorie-total").textContent = number(day.nutrition.calories.known_total, 0);
   $("#workout-total").textContent = number(summary.duration_minutes);
   renderWorkouts($("#today-workouts"), day);
-  renderMeals($("#food-list"), day);
+  renderMeals($("#food-list"), day, mealComposer.reuse);
   renderSchedule($("#home-schedule"), upcoming.schedule);
   const container = $("#recent-workouts");
   container.replaceChildren();
@@ -104,36 +134,54 @@ async function refresh() {
   $("#page-error").hidden = true;
 }
 
-dateInput.addEventListener("change", () => {
-  if (!dateInput.value) return;
-  history.replaceState({}, "", `/home?date=${dateInput.value}`);
+function selectDate(value) {
+  if (!value || value < "1900-01-01" || value > localDate()) value = localDate();
+  dateInput.value = value;
+  history.replaceState({}, "", `/home?date=${value}`);
   refresh().catch(showError);
-});
+}
+dateInput.addEventListener("change", () => selectDate(dateInput.value));
+$("#previous-day").addEventListener("click", () => selectDate(addDays(dateInput.value, -1)));
+$("#next-day").addEventListener("click", () => selectDate(addDays(dateInput.value, 1)));
+$("#today-button").addEventListener("click", () => selectDate(localDate()));
 $("#jump-food").addEventListener("click", () => {
-  $("#food-name").focus();
+  $("#meal-items input").focus();
 });
 $("#food-form").addEventListener("submit", (event) =>
   saveForm(event, async (data) => {
-    const name = data.food_name.trim();
-    if (!name) throw new Error("Enter a food name.");
-    await api("activity/meals", "POST", {
-      meal_name: name,
-      consumed_on: dateInput.value,
-      items: [{ ...data, food_name: name }],
+    const items = mealComposer.items(),
+      selected = dateInput.value;
+    if (items.some((item) => !item.food_name)) throw new Error("Enter a name for every food.");
+    const controls = [...$("#food-form").querySelectorAll("input, button, textarea")];
+    const disabled = controls.map((control) => control.disabled);
+    controls.forEach((control) => {
+      control.disabled = true;
     });
-    $("#food-form").reset();
-    $("#food-name").focus();
-    notify("Food saved to your day.");
+    try {
+      await api("activity/meals", "POST", {
+        meal_name: data.meal_name.trim() || items[0].food_name,
+        consumed_on: selected,
+        items,
+      });
+    } finally {
+      controls.forEach((control, index) => {
+        control.disabled = disabled[index];
+      });
+    }
+    mealComposer.reset();
+    $("#meal-items input").focus();
+    notify(`Meal saved for ${dateLabel(selected)}.`);
     refresh().catch(showError);
   }),
 );
 $("#workout-form").addEventListener("submit", (event) =>
   saveForm(event, async (data) => {
     if (!data.workout_name.trim()) throw new Error("Enter a workout name.");
-    await api("activity/workouts", "POST", { ...data, performed_on: dateInput.value });
+    const selected = dateInput.value;
+    await api("activity/workouts", "POST", { ...data, performed_on: selected });
     $("#workout-form").reset();
     $("#workout-name").focus();
-    notify("Workout saved to your day.");
+    notify(`Workout saved for ${dateLabel(selected)}.`);
     refresh().catch(showError);
   }),
 );
