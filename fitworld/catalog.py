@@ -6,7 +6,7 @@ from datetime import date, timedelta
 
 from werkzeug.exceptions import BadRequest, NotFound
 
-from .validation import ValidationError 
+from .validation import ValidationError
 
 GOAL_CATEGORIES = {
     "get_active": "mixed",
