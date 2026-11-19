@@ -143,7 +143,7 @@ function renderDay(day) {
   $("#calorie-total").textContent = number(day.nutrition.calories.known_total, 0);
   $("#workout-total").textContent = number(summary.duration_minutes);
   renderWorkouts($("#today-workouts"), day, manualWorkout.edit);
-  renderMeals($("#food-list"), day, mealComposer.reuse, mealComposer.edit);
+  renderMeals($("#food-list"), day, mealComposer.reuse, mealComposer.edit, mealLibrary.favorite);
 }
 
 function renderRecent(recent) {

@@ -67,7 +67,7 @@ export function renderWorkouts(container, data, onEdit) {
   });
 }
 
-export function renderMeals(container, data, onReuse, onEdit) {
+export function renderMeals(container, data, onReuse, onEdit, onFavorite) {
   container.replaceChildren();
   if (!data.meals.length) return empty(container, "No food logged for this day yet.");
   data.meals.forEach((meal) => {
@@ -98,6 +98,20 @@ export function renderMeals(container, data, onReuse, onEdit) {
       );
       card.append(el("p", "small muted", parts.join(" · ")));
     });
+    if (onFavorite) {
+      const favorite = el("button", "text-button", "Favorite meal");
+      favorite.type = "button";
+      favorite.setAttribute("aria-label", `Favorite ${meal.meal_name}`);
+      favorite.addEventListener("click", async () => {
+        favorite.disabled = true;
+        try {
+          await onFavorite(meal);
+        } finally {
+          favorite.disabled = false;
+        }
+      });
+      card.append(favorite);
+    }
     if (onEdit) {
       const edit = el("button", "text-button", "Edit meal");
       edit.type = "button";

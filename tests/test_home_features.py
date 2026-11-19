@@ -78,3 +78,28 @@ class HomeFeatureTests(AppCase):
         payload["duration_minutes"] = -1
         self.assertEqual(self.write(f"activity/workouts/{log_id}", payload, "PUT").status_code, 422)
         self.assertEqual(self.day_data()["summary"]["duration_minutes"], 35)
+
+    def test_favorite_is_private_snapshot_not_a_second_log(self):
+        meal_id = self.food().json["id"]
+        favorite = self.write("meals/favorites", {"meal_id": meal_id})
+        self.assertEqual(favorite.status_code, 201)
+        favorite_id = favorite.json["id"]
+        self.assertEqual(self.write("meals/favorites", {"meal_id": meal_id}).status_code, 409)
+        other = self.app.test_client()
+        self.create_account(other, "other@example.com")
+        self.assertEqual(other.get("/api/meals/favorites").json["meals"], [])
+        self.assertEqual(
+            self.write("meals/favorites", {"meal_id": meal_id}, client=other).status_code, 404
+        )
+        self.assertEqual(
+            self.write(f"meals/favorites/{favorite_id}", method="DELETE", client=other).status_code,
+            404,
+        )
+        self.write(f"activity/meals/{meal_id}", self.meal_payload(), "PUT")
+        self.write(f"activity/meals/{meal_id}", method="DELETE")
+        saved = self.client.get("/api/meals/favorites").json["meals"]
+        self.assertEqual(saved[0]["items"][0]["servings"], 2)
+        self.assertEqual(self.day_data()["meals"], [])
+        self.assertEqual(
+            self.write(f"meals/favorites/{favorite_id}", method="DELETE").status_code, 200
+        )

@@ -5,7 +5,16 @@ from functools import wraps
 
 from flask import Blueprint, g, jsonify, request
 
-from . import activity, catalog, custom_catalog, measurements, progress, reports, weekly_goals
+from . import (
+    activity,
+    catalog,
+    custom_catalog,
+    meal_library,
+    measurements,
+    progress,
+    reports,
+    weekly_goals,
+)
 from .api import authenticated, invalid_form, payload
 from .db import get_db
 from .validation import ValidationError, iso_date
@@ -193,3 +202,22 @@ def get_recent_foods():
 @onboarded
 def edit_workout(log_id):
     return jsonify(id=activity.edit_manual_workout(get_db(), g.user["id"], log_id, payload()))
+
+
+@bp.get("/meals/favorites")
+@onboarded
+def get_favorite_meals():
+    return jsonify(meals=meal_library.favorites(get_db(), g.user["id"]))
+
+
+@bp.post("/meals/favorites")
+@onboarded
+def save_favorite_meal():
+    return jsonify(id=meal_library.save_favorite(get_db(), g.user["id"], payload())), 201
+
+
+@bp.delete("/meals/favorites/<int:favorite_id>")
+@onboarded
+def remove_favorite_meal(favorite_id):
+    meal_library.delete_favorite(get_db(), g.user["id"], favorite_id)
+    return jsonify(deleted=True)
