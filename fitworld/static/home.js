@@ -22,9 +22,11 @@ import { renderWeeklyGoal } from "./js/weekly-goal-ui.js";
 
 import { initMealComposer } from "./js/meal-composer.js";
 
+import { initManualWorkout } from "./js/manual-workout.js";
 import { initMealLibrary } from "./js/meal-library.js";
 const mealComposer = initMealComposer();
 const mealLibrary = initMealLibrary(mealComposer);
+const manualWorkout = initManualWorkout();
 const dateInput = $("#home-date");
 dateInput.value = new URLSearchParams(location.search).get("date") || localDate();
 if (!dateInput.value || dateInput.value > localDate() || dateInput.value < "1900-01-01")
@@ -139,7 +141,7 @@ function renderDay(day) {
   renderNutrition($("#daily-nutrition"), day.nutrition);
   $("#calorie-total").textContent = number(day.nutrition.calories.known_total, 0);
   $("#workout-total").textContent = number(summary.duration_minutes);
-  renderWorkouts($("#today-workouts"), day);
+  renderWorkouts($("#today-workouts"), day, manualWorkout.edit);
   renderMeals($("#food-list"), day, mealComposer.reuse, mealComposer.edit);
 }
 
@@ -215,20 +217,26 @@ $("#food-form").addEventListener("submit", (event) =>
 $("#workout-form").addEventListener("submit", (event) =>
   saveForm(event, async (data) => {
     if (!data.workout_name.trim()) throw new Error("Enter a workout name.");
-    const selected = dateInput.value;
+    const selected = manualWorkout.editing()?.date || dateInput.value;
     const controls = [...$("#workout-form").querySelectorAll("input, select, textarea, button")];
     const disabled = controls.map((control) => control.disabled);
     controls.forEach((control) => {
       control.disabled = true;
     });
     try {
-      await api("activity/workouts", "POST", { ...data, performed_on: selected });
+      await api(
+        manualWorkout.editing()
+          ? `activity/workouts/${manualWorkout.editing().id}`
+          : "activity/workouts",
+        manualWorkout.editing() ? "PUT" : "POST",
+        { ...data, performed_on: selected },
+      );
     } finally {
       controls.forEach((control, index) => {
         control.disabled = disabled[index];
       });
     }
-    $("#workout-form").reset();
+    manualWorkout.reset();
     $("#workout-name").focus();
     notify(`Workout saved for ${dateLabel(selected)}.`);
     refresh().catch(showError);

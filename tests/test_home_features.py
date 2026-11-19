@@ -47,3 +47,34 @@ class HomeFeatureTests(AppCase):
         other = self.app.test_client()
         self.create_account(other, "other@example.com")
         self.assertEqual(other.get("/api/foods/recent").json["foods"], [])
+
+    def test_manual_workout_edit_preserves_date_and_updates_weekly_goal(self):
+        log_id = self.log(workout_id=None, workout_name="Walk").json["id"]
+        payload = {
+            "workout_name": "Walk corrected",
+            "duration_minutes": 15,
+            "status": "partial",
+            "notes": "Rain",
+            "estimated_calories": "",
+        }
+        self.assertEqual(self.write(f"activity/workouts/{log_id}", payload, "PUT").status_code, 200)
+        day = self.day_data()
+        self.assertEqual(day["workouts"][0]["id"], log_id)
+        self.assertEqual(day["workouts"][0]["performed_on"], self.day)
+        self.assertEqual(day["summary"]["completed"], 0)
+        self.assertEqual(day["summary"]["duration_minutes"], 15)
+        self.assertIsNone(day["workouts"][0]["estimated_calories"])
+        goal = self.client.get(f"/api/progress/weekly?date={self.day}&today={self.day}").json
+        self.assertEqual(goal["week"]["completed_days"], 0)
+        catalog_id = self.log().json["id"]
+        self.assertEqual(
+            self.write(f"activity/workouts/{catalog_id}", payload, "PUT").status_code, 409
+        )
+        other = self.app.test_client()
+        self.create_account(other, "other@example.com")
+        self.assertEqual(
+            self.write(f"activity/workouts/{log_id}", payload, "PUT", other).status_code, 404
+        )
+        payload["duration_minutes"] = -1
+        self.assertEqual(self.write(f"activity/workouts/{log_id}", payload, "PUT").status_code, 422)
+        self.assertEqual(self.day_data()["summary"]["duration_minutes"], 35)

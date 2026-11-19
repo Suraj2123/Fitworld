@@ -79,6 +79,7 @@
       <section class="panel-card" aria-labelledby="workout-heading">
         <h2 id="workout-heading">Workout log</h2>
         <p class="small muted">Log any movement by name, or use “Log a workout” for a catalog session with exercise sets.</p>
+        <p id="workout-edit-status" role="status"></p>
         <form id="workout-form">
           <div class="form-error error-box" role="alert" tabindex="-1" hidden></div>
           <div class="form-grid">
@@ -123,6 +124,11 @@
           <p id="workout-date-note" class="small muted"></p>
           <button type="submit"
                   class="primary-button">Add workout <span aria-hidden="true">＋</span></button>
+          <button type="button"
+                  id="cancel-workout-edit"
+                  class="text-button"
+                  hidden>Cancel editing</button>
+          <button type="reset" class="text-button">Clear workout</button>
         </form>
         <p class="workout-time-total"
            role="status">Total workout time: <strong id="workout-total">0</strong> minutes</p>

@@ -187,3 +187,9 @@ def edit_meal(log_id):
 @onboarded
 def get_recent_foods():
     return jsonify(foods=reports.recent_foods(get_db(), g.user["id"]))
+
+
+@bp.put("/activity/workouts/<int:log_id>")
+@onboarded
+def edit_workout(log_id):
+    return jsonify(id=activity.edit_manual_workout(get_db(), g.user["id"], log_id, payload()))

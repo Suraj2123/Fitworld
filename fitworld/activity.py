@@ -207,3 +207,38 @@ def delete_activity(connection, user_id, kind, log_id):
                 "UPDATE scheduled_workouts SET status=? WHERE id=? AND user_id=? AND status='completed'",
                 ("completed" if completed else "planned", row["scheduled_workout_id"], user_id),
             )
+
+
+def edit_manual_workout(connection, user_id, log_id, data):
+    """Update manual logs only; catalog prescriptions and scheduled logs stay intact."""
+    form = Form(data)
+    name = form.text("workout_name", "Workout name", 120)
+    minutes = form.number("duration_minutes", "workout duration", 1, 1440, integer=True)
+    status = form.choice("status", {"completed", "partial"}, "completed or stopped early")
+    calories = optional_number(form, "estimated_calories", "estimated calories", 50000)
+    notes = form.text("notes", "Notes", 2000, minimum=0) if data.get("notes") is not None else ""
+    form.finish()
+    with connection:
+        connection.execute("BEGIN IMMEDIATE")
+        row = connection.execute(
+            "SELECT * FROM workout_logs WHERE id=? AND user_id=?", (log_id, user_id)
+        ).fetchone()
+        if row is None:
+            raise NotFound("This workout was not found in your account.")
+        has_sets = connection.execute(
+            "SELECT 1 FROM exercise_logs WHERE workout_log_id=?", (log_id,)
+        ).fetchone()
+        snapshot = json.loads(row["muscle_groups_snapshot"] or '{"groups": []}')
+        if (
+            row["workout_id"] is not None
+            or row["scheduled_workout_id"]
+            or has_sets
+            or snapshot["groups"]
+        ):
+            raise Conflict("Only manual workouts without exercise sets can be edited here.")
+        connection.execute(
+            """UPDATE workout_logs SET workout_name=?, duration_seconds=?, status=?,
+                estimated_calories=?, notes=? WHERE id=? AND user_id=?""",
+            (name, minutes * 60, status, calories, notes, log_id, user_id),
+        )
+    return log_id

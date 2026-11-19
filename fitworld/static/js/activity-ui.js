@@ -1,6 +1,6 @@
 import { el, empty, number, mass, badge, removeEntry } from "./client.js";
 
-export function renderWorkouts(container, data) {
+export function renderWorkouts(container, data, onEdit) {
   container.replaceChildren();
   if (!data.workouts.length)
     return empty(container, "A fresh page. Log your first workout whenever you’re ready.");
@@ -34,6 +34,19 @@ export function renderWorkouts(container, data) {
       );
       details.append(list);
       card.append(details);
+    }
+    if (
+      onEdit &&
+      workout.workout_id === null &&
+      !workout.scheduled_workout_id &&
+      !workout.exercises.length &&
+      !workout.muscle_groups.length
+    ) {
+      const edit = el("button", "text-button", "Edit workout");
+      edit.type = "button";
+      edit.setAttribute("aria-label", `Edit ${workout.workout_name}`);
+      edit.addEventListener("click", () => onEdit(workout));
+      card.append(edit);
     }
     const remove = el("button", "text-button remove-entry", "Remove workout");
     remove.type = "button";
