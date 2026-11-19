@@ -8,7 +8,6 @@ from flask import Blueprint, g, jsonify, request
 from . import activity, catalog, measurements, progress, reports
 from .api import authenticated, invalid_form, payload
 from .db import get_db
-# Imported form for create_exercises
 from .validation import Form, ValidationError, iso_date
 
 bp = Blueprint("app_api", __name__, url_prefix="/api")

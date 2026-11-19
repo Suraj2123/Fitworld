@@ -6,7 +6,6 @@ from datetime import date, timedelta
 
 from werkzeug.exceptions import BadRequest, NotFound
 
-# Import sqlite3 and ValidationError for error handling in create/deleting workouts
 from .validation import ValidationError 
 
 GOAL_CATEGORIES = {
