@@ -124,3 +124,26 @@ class HomeFeatureTests(AppCase):
         other = self.app.test_client()
         self.create_account(other, "other@example.com")
         self.assertEqual(other.get("/api/activity/meals?q=oat").json["meals"], [])
+
+    def test_meal_categories_preserve_defaults_and_follow_edits_and_favorites(self):
+        old_id = self.food().json["id"]
+        self.assertEqual(self.day_data()["meals"][0]["meal_category"], "uncategorized")
+        data = self.meal_payload(meal_category="lunch")
+        self.assertEqual(self.write(f"activity/meals/{old_id}", data, "PUT").status_code, 200)
+        self.write("meals/favorites", {"meal_id": old_id})
+        self.assertEqual(
+            self.client.get("/api/meals/favorites").json["meals"][0]["meal_category"], "lunch"
+        )
+        self.assertEqual(
+            len(self.client.get("/api/activity/meals?meal_category=lunch").json["meals"]), 1
+        )
+        self.assertEqual(
+            self.client.get("/api/activity/meals?meal_category=dinner").json["meals"], []
+        )
+        self.assertEqual(
+            self.write("activity/meals", self.meal_payload(meal_category="invalid")).status_code,
+            422,
+        )
+        self.assertEqual(
+            self.client.get("/api/activity/meals?meal_category=invalid").status_code, 422
+        )

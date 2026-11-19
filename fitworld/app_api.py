@@ -234,4 +234,7 @@ def get_meal_history():
     end = iso_date(request.args["to"], "to") if request.args.get("to") else ""
     if start and end and start > end:
         raise ValidationError({"to": "The end date must be on or after the start date."})
-    return jsonify(reports.meal_history(get_db(), g.user["id"], query, start, end, page))
+    category = request.args.get("meal_category", "")
+    if category and category not in activity.MEAL_CATEGORIES:
+        raise ValidationError({"meal_category": "Choose a valid meal category."})
+    return jsonify(reports.meal_history(get_db(), g.user["id"], query, start, end, page, category))

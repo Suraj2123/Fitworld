@@ -10,7 +10,12 @@ from .validation import Form
 
 def favorites(connection, user_id):
     return [
-        {"id": row["id"], "meal_name": row["name"], "items": json.loads(row["items_json"])}
+        {
+            "id": row["id"],
+            "meal_name": row["name"],
+            "meal_category": row["meal_category"],
+            "items": json.loads(row["items_json"]),
+        }
         for row in connection.execute(
             "SELECT * FROM favorite_meals WHERE user_id=? ORDER BY name, id", (user_id,)
         )
@@ -50,8 +55,8 @@ def save_favorite(connection, user_id, data):
             )
         ]
         return connection.execute(
-            "INSERT INTO favorite_meals (user_id, name, items_json) VALUES (?, ?, ?)",
-            (user_id, name, json.dumps(items)),
+            "INSERT INTO favorite_meals (user_id, name, items_json, meal_category) VALUES (?, ?, ?, ?)",
+            (user_id, name, json.dumps(items), meal["meal_category"]),
         ).lastrowid
 
 

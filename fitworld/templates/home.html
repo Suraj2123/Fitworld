@@ -164,6 +164,14 @@
                                                                                                   name="meal_name"
                                                                                                   maxlength="120"
                                                                                                   placeholder="e.g. Breakfast; defaults to the first food">
+          <label for="meal-category">Meal category</label><select id="meal-category"
+                                                                  name="meal_category">
+            <option value="uncategorized">Uncategorized</option>
+            <option value="breakfast">Breakfast</option>
+            <option value="lunch">Lunch</option>
+            <option value="dinner">Dinner</option>
+            <option value="snack">Snacks</option>
+          </select>
           <div id="meal-items"></div>
           <button type="button"
                   id="add-meal-item"
@@ -250,6 +258,15 @@
                                                            max="2100-12-31">
               </div>
             </div>
+            <label for="meal-search-category">Category</label><select id="meal-search-category"
+                                                                      name="meal_category">
+              <option value="">All categories</option>
+              <option value="uncategorized">Uncategorized</option>
+              <option value="breakfast">Breakfast</option>
+              <option value="lunch">Lunch</option>
+              <option value="dinner">Dinner</option>
+              <option value="snack">Snacks</option>
+            </select>
             <button type="submit" class="secondary-button">Search meals</button>
           </form>
           <p id="meal-search-count" role="status"></p>

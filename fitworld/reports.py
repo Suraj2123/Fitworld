@@ -125,13 +125,14 @@ def recent_foods(connection, user_id):
     return [dict(row) for row in rows]
 
 
-def meal_history(connection, user_id, query, start, end, page):
+def meal_history(connection, user_id, query, start, end, page, category=""):
     """Search meal and food names with bounded, stable pagination."""
     where = """n.user_id=? AND (?='' OR instr(lower(n.meal_name), lower(?))>0 OR EXISTS (
         SELECT 1 FROM nutrition_items i WHERE i.nutrition_log_id=n.id
         AND instr(lower(i.food_name), lower(?))>0))
-        AND (?='' OR n.consumed_on>=?) AND (?='' OR n.consumed_on<=?)"""
-    params = (user_id, query, query, query, start, start, end, end)
+        AND (?='' OR n.consumed_on>=?) AND (?='' OR n.consumed_on<=?)
+        AND (?='' OR n.meal_category=?)"""
+    params = (user_id, query, query, query, start, start, end, end, category, category)
     total = connection.execute(
         f"SELECT COUNT(*) FROM nutrition_logs n WHERE {where}", params
     ).fetchone()[0]

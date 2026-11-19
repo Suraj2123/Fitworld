@@ -191,7 +191,7 @@ $("#food-form").addEventListener("submit", (event) =>
     const items = mealComposer.items(),
       selected = mealComposer.editing()?.date || dateInput.value;
     if (items.some((item) => !item.food_name)) throw new Error("Enter a name for every food.");
-    const controls = [...$("#food-form").querySelectorAll("input, button, textarea")];
+    const controls = [...$("#food-form").querySelectorAll("input, select, button, textarea")];
     const disabled = controls.map((control) => control.disabled);
     controls.forEach((control) => {
       control.disabled = true;
@@ -203,6 +203,7 @@ $("#food-form").addEventListener("submit", (event) =>
         {
           meal_name: data.meal_name.trim() || items[0].food_name,
           consumed_on: selected,
+          meal_category: data.meal_category,
           items,
         },
       );

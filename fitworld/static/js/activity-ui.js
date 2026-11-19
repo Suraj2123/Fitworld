@@ -70,6 +70,23 @@ export function renderWorkouts(container, data, onEdit) {
 export function renderMeals(container, data, onReuse, onEdit, onFavorite) {
   container.replaceChildren();
   if (!data.meals.length) return empty(container, "No food logged for this day yet.");
+  const categories = {
+    breakfast: "Breakfast",
+    lunch: "Lunch",
+    dinner: "Dinner",
+    snack: "Snacks",
+    uncategorized: "Uncategorized",
+  };
+  const groups = new Map();
+  if (!data.showDates) {
+    Object.entries(categories).forEach(([key, label]) => {
+      if (!data.meals.some((meal) => (meal.meal_category || "uncategorized") === key)) return;
+      const section = el("section", "meal-category-group");
+      section.append(el("h3", "nutrition-heading", label));
+      groups.set(key, section);
+      container.append(section);
+    });
+  }
   data.meals.forEach((meal) => {
     const card = el("article", "entry-card");
     const heading = el("div", "entry-heading");
@@ -81,7 +98,7 @@ export function renderMeals(container, data, onReuse, onEdit, onFavorite) {
     if (data.showDates) {
       const date = el("a", "text-link", meal.consumed_on);
       date.href = `/home?date=${meal.consumed_on}`;
-      card.append(date);
+      card.append(date, el("span", "badge", categories[meal.meal_category] || "Uncategorized"));
     }
     meal.items.forEach((item) => {
       card.append(
@@ -143,7 +160,7 @@ export function renderMeals(container, data, onReuse, onEdit, onFavorite) {
       ),
     );
     card.append(remove);
-    container.append(card);
+    (groups.get(meal.meal_category || "uncategorized") || container).append(card);
   });
 }
 

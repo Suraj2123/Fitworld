@@ -134,6 +134,9 @@ NUTRIENTS = {
 }
 
 
+MEAL_CATEGORIES = {"uncategorized", "breakfast", "lunch", "dinner", "snack"}
+
+
 def validate_meal(data):
     form = Form(data)
     meal_name = form.text("meal_name", "Meal name", 120)
@@ -163,12 +166,15 @@ def validate_meal(data):
 def log_meal(connection, user_id, data, log_id=None):
     meal_name, values = validate_meal(data)
     consumed_on = iso_date(data.get("consumed_on"), "consumed_on", historical=True)
+    category = data.get("meal_category", "uncategorized")
+    if not isinstance(category, str) or category not in MEAL_CATEGORIES:
+        raise ValidationError({"meal_category": "Choose a valid meal category."})
     with connection:
         connection.execute("BEGIN IMMEDIATE")
         if log_id is None:
             log_id = connection.execute(
-                "INSERT INTO nutrition_logs (user_id, consumed_on, meal_name, source) VALUES (?, ?, ?, 'manual')",
-                (user_id, consumed_on, meal_name),
+                "INSERT INTO nutrition_logs (user_id, consumed_on, meal_name, meal_category, source) VALUES (?, ?, ?, ?, 'manual')",
+                (user_id, consumed_on, meal_name, category),
             ).lastrowid
         else:
             if not connection.execute(
@@ -176,8 +182,8 @@ def log_meal(connection, user_id, data, log_id=None):
             ).fetchone():
                 raise NotFound("This meal was not found in your account.")
             connection.execute(
-                "UPDATE nutrition_logs SET meal_name=?, consumed_on=? WHERE id=? AND user_id=?",
-                (meal_name, consumed_on, log_id, user_id),
+                "UPDATE nutrition_logs SET meal_name=?, consumed_on=?, meal_category=? WHERE id=? AND user_id=?",
+                (meal_name, consumed_on, category, log_id, user_id),
             )
             connection.execute("DELETE FROM nutrition_items WHERE nutrition_log_id=?", (log_id,))
         connection.executemany(

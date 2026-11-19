@@ -94,6 +94,7 @@ export function initMealComposer() {
     return (
       editing ||
       $("#meal-name").value.trim() ||
+      $("#meal-category").value !== "uncategorized" ||
       items().some((item) =>
         Object.entries(item).some(([key, value]) =>
           key === "servings" ? value !== "1" : value !== "",
@@ -110,6 +111,7 @@ export function initMealComposer() {
     }
     container.replaceChildren();
     $("#meal-name").value = meal.meal_name;
+    $("#meal-category").value = meal.meal_category || "uncategorized";
     meal.items.forEach((item) => add(item, false));
     container.querySelector("input").focus();
     if (edit) {
@@ -131,7 +133,12 @@ export function initMealComposer() {
   return {
     items,
     hasDraft,
-    snapshot: () => ({ meal_name: $("#meal-name").value, items: items(), editing }),
+    snapshot: () => ({
+      meal_name: $("#meal-name").value,
+      meal_category: $("#meal-category").value,
+      items: items(),
+      editing,
+    }),
     restore(draft) {
       load(
         { ...draft, id: draft.editing?.id, consumed_on: draft.editing?.date },
