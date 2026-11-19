@@ -2,6 +2,8 @@
 {% block styles %}
   <link rel="stylesheet"
         href="{{ url_for('static', filename='progress.css') }}">
+  <link rel="stylesheet"
+        href="{{ url_for('static', filename='weekly-goal.css') }}">
 {% endblock %}
 {% block scripts %}
   <script type="module"
@@ -38,6 +40,7 @@
     </div>
     <p id="average-explanation" class="small muted"></p>
   </section>
+  {% include "_weekly_goal.html" %}
   <div class="progress-layout"><section class="panel-card calendar-panel" aria-labelledby="calendar-heading"><div class="section-heading"><h2 id="calendar-heading">A month of showing up</h2></div><div class="calendar-legend"><span><i class="legend-dot completed-dot" aria-hidden="true"></i>Completed</span><span><i class="legend-dot partial-dot" aria-hidden="true"></i>Stopped early</span><span><i class="legend-dot food-dot" aria-hidden="true"></i>Food logged</span></div><p class="small muted">Choose a day to see its workouts, food, and nutrition. Use arrow keys to move between dates.</p><div class="weekday-headings" aria-hidden="true">{% for day in ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'] %}<span>{{ day }}</span>{% endfor %}</div><div id="progress-calendar"
                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           class="calendar-grid"
                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           role="group"

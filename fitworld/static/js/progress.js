@@ -17,6 +17,7 @@ import {
   showError,
 } from "./client.js";
 import { renderWorkouts, renderMeals, renderNutrition } from "./activity-ui.js";
+import { renderWeeklyGoal, weeklyGoalLoading, weeklyGoalError } from "./weekly-goal-ui.js";
 
 const today = localDate(),
   picker = $("#month-picker");
@@ -138,8 +139,18 @@ async function loadDay() {
   ["#day-workouts", "#day-nutrition", "#day-meals"].forEach((selector) =>
     $(selector).replaceChildren(),
   );
-  const data = await api(`activity?date=${selected}`);
+  const goal = $("#weekly-goal");
+  weeklyGoalLoading(goal);
+  const [data, weekly] = await Promise.all([
+    api(`activity?date=${selected}`),
+    api(`progress/weekly?date=${selected}&today=${today}`).catch(() => null),
+  ]).catch((error) => {
+    if (revision === dayRevision) weeklyGoalError(goal);
+    throw error;
+  });
   if (revision !== dayRevision || selected !== selectedDate) return;
+  if (weekly) renderWeeklyGoal(goal, weekly, { showHistory: true });
+  else weeklyGoalError(goal);
   const summary = data.summary;
   $("#day-totals").textContent =
     `${number(summary.duration_minutes)} min of movement · ${summary.workouts_missing_calories === data.workouts.length && data.workouts.length ? "Burn not estimated" : `${number(summary.estimated_calories_burned, 0)} kcal burned (estimated)`} · ${number(data.nutrition.calories.known_total, 0)} kcal consumed${summary.workouts_missing_calories && summary.workouts_missing_calories !== data.workouts.length ? " · Some burn estimates missing" : ""}`;

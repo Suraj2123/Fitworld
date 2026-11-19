@@ -5,7 +5,7 @@ from functools import wraps
 
 from flask import Blueprint, g, jsonify, request
 
-from . import activity, catalog, measurements, progress, reports
+from . import activity, catalog, measurements, progress, reports, weekly_goals
 from .api import authenticated, invalid_form, payload
 from .db import get_db
 from .validation import ValidationError, iso_date
@@ -129,3 +129,11 @@ def get_progress():
 @onboarded
 def save_measurement():
     return jsonify(measurement=measurements.record_weight(get_db(), g.user["id"], payload())), 201
+
+
+@bp.get("/progress/weekly")
+@onboarded
+def get_weekly_progress():
+    today = iso_date(request.args.get("today", date.today().isoformat()), "today")
+    selected = iso_date(request.args.get("date", today))
+    return jsonify(weekly_goals.weekly_progress(get_db(), g.user["id"], selected, today))
