@@ -16,6 +16,9 @@ export function initMealComposer() {
       ),
     );
   }
+  function changed() {
+    form.dispatchEvent(new Event("meal:draft"));
+  }
   function update() {
     [...container.children].forEach((row, index) => {
       row.querySelector("legend").textContent = `Food ${index + 1}`;
@@ -45,6 +48,7 @@ export function initMealComposer() {
         "Not saved yet. Totals use servings eaten; blank nutrients remain unknown.",
       ),
     );
+    changed();
   }
   function add(item = {}, focus = true) {
     if (container.children.length >= 50) return;
@@ -121,10 +125,19 @@ export function initMealComposer() {
         ? "Meal ready to edit. Save changes when finished."
         : "Meal copied to your draft. Choose a date, adjust servings, then save.",
     );
+    changed();
     return true;
   }
   return {
     items,
+    hasDraft,
+    snapshot: () => ({ meal_name: $("#meal-name").value, items: items(), editing }),
+    restore(draft) {
+      load(
+        { ...draft, id: draft.editing?.id, consumed_on: draft.editing?.date },
+        Boolean(draft.editing),
+      );
+    },
     addFood(food) {
       if (form.dataset.busy === "true") return;
       const draft = items();

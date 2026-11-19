@@ -22,6 +22,7 @@ import { renderWeeklyGoal } from "./js/weekly-goal-ui.js";
 
 import { initMealComposer } from "./js/meal-composer.js";
 
+import { initMealRecovery } from "./js/meal-recovery.js";
 import { initManualWorkout } from "./js/manual-workout.js";
 import { initMealLibrary } from "./js/meal-library.js";
 const mealComposer = initMealComposer();
@@ -174,6 +175,7 @@ function selectDate(value) {
   dateInput.value = value;
   history.replaceState({}, "", `/home?date=${value}`);
   refresh().catch(showError);
+  document.dispatchEvent(new Event("fitworld:date"));
 }
 dateInput.addEventListener("change", () => selectDate(dateInput.value));
 $("#previous-day").addEventListener("click", () => selectDate(addDays(dateInput.value, -1)));
@@ -271,7 +273,8 @@ async function loadRoutine() {
   }
 }
 async function boot() {
-  await session;
+  const account = await session;
+  initMealRecovery(mealComposer, account.user.id, () => dateInput.value, selectDate);
   await Promise.all([loadCatalog(), loadRoutine(), refresh(), mealLibrary.refresh()]);
 }
 boot().catch(showError);
