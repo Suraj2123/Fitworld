@@ -69,3 +69,12 @@ The browser server uses a temporary database on port 5057. Stop it with Ctrl+C w
 ## Scope and remaining limits
 
 The Home contribution is integrated with the current shared transport, weekly goals, history endpoint, and private catalog. The verification counts above describe its original branch checks; current combined checks are recorded in [the integration review](branch-integration-review.md). Meal reuse is available from the currently viewed day's entries: open the source date first, copy the meal, and then change to the destination date. Drafts survive date changes but do not survive a full page reload. Editing an already saved meal in place and a searchable favorite-food library remain separate future improvements. Nutrition and calorie estimates are manually entered, not automatically inferred.
+
+## November 19 follow-up
+
+The original walkthrough above describes the November 4 contribution. The new
+[Home workflows guide](home-workflows.md) supersedes its remaining-work section:
+saved meals and manual workouts can now be edited, recent foods and favorite
+meals can be reused, unfinished meals recover after a reload in the same tab,
+and meal history can be searched and categorized. Migrations 008 and 009 are
+required. Nutrition remains manually entered.

@@ -58,7 +58,14 @@ All app endpoints require an authenticated, onboarded user. Writes require the s
 | `GET /api/activity/recent` | `{workouts: [...]}` with the eight most recent completed/partial logs, ordered by performed date. |
 | `GET /api/activity/workouts?page=1&per_page=20` | Saved workout history for the signed-in account, including completed/partial and custom workouts. Returns `{workouts: [...], pagination: {page, per_page, total, total_pages, has_next}}`. Defaults: page 1, 20 entries; `page` is 1–2147483647 and `per_page` is 1–100. Ordered by performed date, start timestamp, then ID, all descending. Empty or out-of-range pages return an empty list; an empty history has zero total pages. Invalid pagination returns 422. Reads existing `workout_logs`; no migration required. |
 | `POST /api/activity/workouts` | `performed_on`, `duration_minutes`, `status` (`completed` or `partial`), and either a catalog `workout_id` or a free-text `workout_name`. Manual workouts require a whole duration of at least one minute. Catalog workouts also support optional `estimated_calories`, `notes`, `scheduled_workout_id`, and `exercises`. Returns `{id}` with HTTP 201. Each actual set supplies `exercise_id`, `set_number`, and reps or duration; optional load is `load_kg`. An unrecorded set must be omitted. |
-| `POST /api/activity/meals` | `meal_name`, `consumed_on`, and 1–50 `items`. Each item supplies `food_name`, `serving_description`, `servings`, `calories_per_serving`, and optional per-serving nutrients. Returns `{id}` with HTTP 201. Source is manual. |
+| `POST /api/activity/meals` | `meal_name`, `consumed_on`, optional `meal_category` (uncategorized by default), and 1–50 `items`. Each item supplies `food_name`, `serving_description`, `servings`, `calories_per_serving`, and optional per-serving nutrients. Returns `{id}` with HTTP 201. Source is manual. |
+| `PUT /api/activity/meals/<id>` | Full meal replacement using the POST fields. Validates all items before atomic replacement and preserves the owned meal ID. The Home editor keeps its original date. |
+| `PUT /api/activity/workouts/<id>` | Owned manual workouts only: `workout_name`, integer `duration_minutes`, `status`, optional `estimated_calories` and `notes`. Preserves ID/date; catalog logs, scheduled logs, logs with sets or recorded muscle groups return 409. |
+| `GET /api/foods/recent` | `{foods}`: up to twenty most recently used food/serving pairs from this account, with per-serving nutrition. |
+| `GET /api/activity/meals?q=…&from=…&to=…&meal_category=…&page=1` | `{meals, pagination: {page, total, total_pages, has_next}}`. Ten entries per page, ordered by consumed date and ID descending. Search (up to 200 characters) matches meal or food names literally, ignoring ASCII case. Optional dates are inclusive; page is 1–1000000. Invalid dates/category/page return 422. |
+| `GET /api/meals/favorites` | `{meals}` with private template IDs, meal names, categories, and item snapshots. |
+| `POST /api/meals/favorites` | `{meal_id}` copies an owned saved meal into a favorite; returns `{id}` with 201. Duplicate names or more than 100 favorites return 409. |
+| `DELETE /api/meals/favorites/<id>` | Deletes an owned template, leaving daily logs unchanged; returns `{deleted: true}`. |
 | `DELETE /api/activity/workouts/<id>` | Remove an owned log and its sets, updating the linked schedule. Returns `{deleted: true}`. |
 | `DELETE /api/activity/meals/<id>` | Remove an owned meal and its food items. Returns `{deleted: true}`. |
 | `GET /api/progress?month=YYYY-MM&today=YYYY-MM-DD` | `{month, starts_on, ends_on, summary, days, records, measurements, milestones}`. `today` supplies the browser's local calendar date for the monthly-average denominator. |
@@ -86,9 +93,15 @@ Private definition creation/deletion is currently an API capability. Existing wo
 
 - **New workout/routine:** insert catalog rows and ordered prescriptions; existing cards, search, and details use the database records. New categories require a schema migration and a corresponding illustration/filter decision.
 - **New progress metric:** add a field to the report and a renderer on Progress. Daily logs and other pages keep their existing contracts.
-- **Editing logged activity:** add owned update operations to `activity.py` and use the existing transaction/schedule relationship. Existing removal plus re-entry is available for correcting a log now.
+- **Editing logged activity:** meals and manual workouts now have owned update operations in `activity.py`. Catalog/scheduled workout editing remains separate work and must preserve the transaction/schedule relationship.
 - **Goals/milestone generation:** existing `goals` and `milestones` remain available. The page reads real stored milestones; a later achievement writer can create them without changing the calendar or nutrition logic.
 - **Weekly goal changes:** keep counting and date rules in `weekly_goals.py`; Home and Progress share that module and renderer. The function accepts the connection and authenticated user ID, and tests cross the same HTTP interface as the browser. If historical targets become a requirement, add effective-dated preference records in a new migration and a new explicit target-basis contract rather than pretending current comparisons are historical achievements. The existing `goals`/`milestones` tables remain available for separate goal or achievement writers.
 - **Photos or food analysis:** use the existing private photo/storage-key tables, add authorization on every read, and place analysis behind a server-side module with an explicit provider. The current UI uses manual nutrition and local vector catalog illustrations.
 
 Public deployment needs the managed session key, HTTPS, production WSGI server, login rate limiting, and account recovery/verification described in the database guide. This contribution is the local course-project application.
+
+
+Meal categories are `uncategorized`, `breakfast`, `lunch`, `dinner`, and `snack`.
+Category grouping does not affect nutrient totals. Favorite templates are snapshots,
+not linked views of mutable logs. Migrations 008/009 preserve previous data.
+See [Home workflows](home-workflows.md) for recovery behavior and a demo guide.

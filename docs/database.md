@@ -123,3 +123,16 @@ ORDER BY e.id;
 ```
 
 The application follows Flask's [SQLite connection pattern](https://flask.palletsprojects.com/en/stable/patterns/sqlite3/) and [account hashing/session pattern](https://flask.palletsprojects.com/en/stable/tutorial/views/). This is a local class-project baseline. Public hosting still needs a production WSGI server, HTTPS with `FITWORLD_HTTPS=1`, a managed `FITWORLD_SECRET_KEY`, login rate limiting, and an account recovery/email-verification design.
+
+
+## Home meal templates and categories
+
+Migration 008 adds `favorite_meals`: account-owned, case-insensitively named,
+independent JSON snapshots of validated foods. Deleting a source log does not
+remove its favorite. Deleting an account cascades to its templates.
+
+Migration 009 adds checked `meal_category` columns to nutrition logs and favorites.
+Allowed values are `uncategorized`, `breakfast`, `lunch`, `dinner`, and `snack`.
+Existing rows default to `uncategorized`; names are not used to infer category.
+Run `init-db` after updating. Repeated initialization preserves meal IDs, child
+nutrition items, and favorite snapshots.
