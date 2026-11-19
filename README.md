@@ -29,12 +29,14 @@ The backend is Python/Flask with parameterized SQLite queries. The frontend is H
 | Page | Behavior |
 | --- | --- |
 | Onboarding `/` | Account creation, age/weight, current exercise habits, experience, goals, preferences, saved-step resume, and review. Completed accounts are directed to Home. |
-| Home `/home` | Daily completed/partial workouts, muscle groups, recorded calorie estimates, persistent food logging with servings and optional nutrients, workout suggestions, upcoming sessions, and recent activity. Choose another date to record past activity. |
+| Home `/home` | Daily completed/partial workouts, weekly workout-day goal, muscle groups, recorded calorie estimates, persistent food logging with servings and optional nutrients, workout suggestions, upcoming sessions, and recent activity. Choose another date to record past activity. |
 | Suggested Workouts `/workouts` | Search workouts, standalone exercise guides, and routines; inspect descriptions, intensity, duration, and prescriptions; explore high/low intensity and recovery; choose, replace, or restart a routine and view 7/28-day schedules. |
-| Personal Progress `/progress` | Monthly completed/partial totals, weekly average, exercise improvements, keyboard-accessible daily calendar, workout and nutrition details, private weight check-ins and history, and saved milestones. Month/day URLs can be bookmarked. |
+| Personal Progress `/progress` | Monthly completed/partial totals, weekly average, weekly workout-day goal and four-week history, exercise improvements, keyboard-accessible daily calendar, workout and nutrition details, private weight check-ins and history, and saved milestones. Month/day URLs can be bookmarked. |
 | Settings `/settings` | View account details, update personal stats and workout preferences, and sign out. |
 
 Workout logging supports optional actual exercise reps, loads, and timed sets. Unfilled sets and calorie estimates remain unknown rather than becoming fabricated performance data. Food calories and nutrients are entered per serving and multiplied by the servings eaten. Unknown nutrients remain distinguishable from a known zero.
+
+The weekly goal follows the selected date and compares distinct days with a completed workout against the days-per-week target saved during onboarding. Weeks run Monday–Sunday; several completed sessions on one day count once. Stopped-early sessions stay visible, and future activity is excluded using the browser's local today. Progress shows the previous four weeks, explicitly compared with the **current** target. Change the target through “Change weekly target.” Counts update from existing logs after additions or removals; this feature needs no migration.
 
 Automated food-photo analysis and progress-photo upload are future extensions. Their schema support remains available; this branch records nutrition manually and does not send personal data to external services.
 
@@ -52,9 +54,11 @@ With the virtual environment activated:
 python -m unittest discover -s tests -v
 ```
 
-Tests use temporary databases. They cover onboarding, authentication/CSRF, account isolation, migration compatibility, serving calculations, unknown nutrients, workout sets, calendar dates and leap years, monthly averages, performance comparisons, routine replacement, scheduled completion, deletion, and weight history. They leave local user data alone.
+Tests use temporary databases. They cover onboarding, authentication/CSRF, account isolation, migration compatibility, serving calculations, unknown nutrients, workout sets, calendar dates and leap years, weekly goals and target changes, monthly averages, performance comparisons, routine replacement, scheduled completion, deletion, and weight history. They leave local user data alone.
 
 For a manual check, create an account; add a food with two servings; log a completed or partial workout; select a routine; then open Progress and choose the logged day. Reload, change months, record a weight, and sign back in. Check both an empty account and a populated month, and use the calendar with Tab and arrow keys.
+
+For weekly goals, log two completed workouts on one day and confirm it counts once. Add a partial-only day, complete another day, and remove a log. Follow a day or earlier-week link on Progress, then change the weekly target and confirm both pages reflect it. Check a week crossing a month boundary and a phone-sized viewport.
 
 ## Team development
 

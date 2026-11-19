@@ -12,6 +12,7 @@ The pages share authenticated navigation, data contracts, and UI primitives. Pag
 | `fitworld/activity.py` | Validate and persist workout sets and meals, check scheduled-session ownership, and delete private activity atomically. |
 | `fitworld/reports.py` | Daily workout/nutrition read model used by both Home and Progress. Nutrient totals preserve unknown values. |
 | `fitworld/progress.py` | Month boundaries, complete/partial calendar counts, weekly averages, exercise comparisons, and weight history. |
+| `fitworld/weekly_goals.py` | Read a Monday–Sunday week and four preceding weeks against the saved weekly target, counting distinct completed-workout days through local today. |
 | `fitworld/profiles.py`, `fitworld/measurements.py` | Profile/preference writes and shared dated weight check-ins, with explicit transaction ownership and metadata-only edit handling. |
 | `fitworld/validation.py` | Shared typed form validation and canonical kg conversion for body weight. |
 | `fitworld/views.py` | Page access control and server-rendered routes. |
@@ -19,6 +20,7 @@ The pages share authenticated navigation, data contracts, and UI primitives. Pag
 | `static/js/client.js` | JSON requests, CSRF handling, local calendar dates, number/unit formatting, safe DOM creation, and form feedback. |
 | `static/js/http.js` | Shared transport for both onboarding and app pages; CSRF rotation, timeout, and structured errors without page/session side effects. |
 | `static/js/activity-ui.js` | Render saved workout, food, and nutrition details consistently across pages. |
+| `static/js/weekly-goal-ui.js`, `static/weekly-goal.css`, `templates/_weekly_goal.html` | Shared accessible weekly goal display, daily activity links, and optional recent-week comparison. Page controllers choose the date and refresh after activity changes. |
 | `static/js/workout-ui.js` | Shared workout cards, details, actual-set logging, and schedule rendering. |
 | `static/home.js`, `static/js/workouts.js`, `static/js/progress.js` | Page-specific state and composition. Each page loads its own module. |
 
@@ -54,6 +56,7 @@ All app endpoints require an authenticated, onboarded user. Writes require the s
 | `DELETE /api/activity/workouts/<id>` | Remove an owned log and its sets, updating the linked schedule. Returns `{deleted: true}`. |
 | `DELETE /api/activity/meals/<id>` | Remove an owned meal and its food items. Returns `{deleted: true}`. |
 | `GET /api/progress?month=YYYY-MM&today=YYYY-MM-DD` | `{month, starts_on, ends_on, summary, days, records, measurements, milestones}`. `today` supplies the browser's local calendar date for the monthly-average denominator. |
+| `GET /api/progress/weekly?date=YYYY-MM-DD&today=YYYY-MM-DD` | `{selected_date, as_of, target_days, target_basis, week, history}`. `date` selects a whole Monday–Sunday week; it defaults to `today`. Both accept the existing date range (1900–2100). `today` defaults to the server date for older callers; current clients always send their local date. `target_basis` is `current_preference`. Each week includes dates, `period` (`past`, `current`, `future`), distinct `completed_days`, `remaining_days`, `goal_met`, and seven `days` with completed/partial counts, `is_future`, and `is_supported_date`. History contains the previous four weeks, newest first; weeks before 1900 are omitted. Dates beyond 2100 in the final calendar week have no activity links. |
 | `POST /api/progress/measurements` | `measured_on`, `weight`, `unit_system` (`metric` or `imperial`). Upserts that day's measurement. Returns `{measurement}` with HTTP 201. Backdating does not replace the latest profile weight. |
 
 Validation returns HTTP 422 with `{error, fields}`. Unknown private records return 404, including attempts to access another account's entry. Missing authentication returns 401, unfinished onboarding and conflicting scheduled completion return 409, malformed JSON returns 400, and missing CSRF returns 403. The browser never automatically retries a write after a timeout; it asks the user to refresh and check whether it saved.
@@ -62,6 +65,8 @@ Validation returns HTTP 422 with `{error, fields}`. Unknown private records retu
 
 - Calendar days show completed and partial workouts independently. A partial workout contributes actual time and an active day, but does not count as a completed workout or establish a personal benchmark.
 - The weekly average is `completed × 7 / calendar days`: elapsed days in the current month, all days in a past month. The UI shows the denominator explicitly. An empty month has zero totals.
+- Weekly goals count **distinct days** with at least one completed workout, including manual workouts. Partial-only days, meals, planned sessions, and activity after the supplied local `today` do not count. The selected date chooses the whole week, including days outside the selected month; it is not a historical cutoff. `today` is the cutoff. Actual counts may exceed the target; the visual meter fills at the target while the exact count stays visible. Goal history is a comparison with the current preference, not a record of earlier targets. Reads derive counts from logs, so backdated entries, removals, and preference changes appear immediately without cached counters or achievement writes.
+- A failed weekly request displays an error within the goal display while daily activity still loads. Page controllers retain their existing revision checks so an older response cannot replace a newer selected day.
 - Exercise benchmarks compare the best recorded load or longest recorded set duration in the chosen month with the best from completed workouts before that month. A first benchmark is labeled as a baseline, with no invented improvement. Longer duration is not interpreted as faster performance.
 - Meals and workout totals are read independently, so adding food cannot multiply workout counts or calories burned. Calories burned are recorded estimates; blank values remain unknown.
 - Nutrition multiplies per-serving values by servings. Each nutrient returns `known_total` and `missing_items`; an unknown protein value is distinct from zero protein. Partial totals are labeled.
@@ -75,6 +80,7 @@ Validation returns HTTP 422 with `{error, fields}`. Unknown private records retu
 - **New progress metric:** add a field to the report and a renderer on Progress. Daily logs and other pages keep their existing contracts.
 - **Editing logged activity:** add owned update operations to `activity.py` and use the existing transaction/schedule relationship. Existing removal plus re-entry is available for correcting a log now.
 - **Goals/milestone generation:** existing `goals` and `milestones` remain available. The page reads real stored milestones; a later achievement writer can create them without changing the calendar or nutrition logic.
+- **Weekly goal changes:** keep counting and date rules in `weekly_goals.py`; Home and Progress share that module and renderer. The function accepts the connection and authenticated user ID, and tests cross the same HTTP interface as the browser. If historical targets become a requirement, add effective-dated preference records in a new migration and a new explicit target-basis contract rather than pretending current comparisons are historical achievements. The existing `goals`/`milestones` tables remain available for separate goal or achievement writers.
 - **Photos or food analysis:** use the existing private photo/storage-key tables, add authorization on every read, and place analysis behind a server-side module with an explicit provider. The current UI uses manual nutrition and local vector catalog illustrations.
 
 Public deployment needs the managed session key, HTTPS, production WSGI server, login rate limiting, and account recovery/verification described in the database guide. This contribution is the local course-project application.

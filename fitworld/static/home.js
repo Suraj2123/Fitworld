@@ -18,6 +18,7 @@ import {
 } from "./js/client.js";
 import { renderWorkouts, renderMeals } from "./js/activity-ui.js";
 import { initWorkoutLogging, renderCards, renderSchedule } from "./js/workout-ui.js";
+import { renderWeeklyGoal, weeklyGoalLoading, weeklyGoalError } from "./js/weekly-goal-ui.js";
 
 const dateInput = $("#home-date");
 dateInput.value = new URLSearchParams(location.search).get("date") || localDate();
@@ -28,12 +29,20 @@ let revision = 0;
 async function refresh() {
   const current = ++revision,
     selected = dateInput.value || localDate();
-  const [day, recent, upcoming] = await Promise.all([
+  const goal = $("#weekly-goal");
+  weeklyGoalLoading(goal);
+  const [day, recent, upcoming, weekly] = await Promise.all([
     api(`activity?date=${selected}`),
     api("activity/recent"),
     api(`schedule?from=${localDate()}&to=${addDays(localDate(), 6)}`),
-  ]);
+    api(`progress/weekly?date=${selected}&today=${localDate()}`).catch(() => null),
+  ]).catch((error) => {
+    if (current === revision) weeklyGoalError(goal);
+    throw error;
+  });
   if (current !== revision) return;
+  if (weekly) renderWeeklyGoal(goal, weekly);
+  else weeklyGoalError(goal);
   const summary = day.summary,
     stats = $("#today-stats");
   stats.replaceChildren(

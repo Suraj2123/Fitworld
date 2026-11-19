@@ -1,6 +1,8 @@
 {% extends "app_base.html" %}
 {% block styles %}
   <link rel="stylesheet" href="{{ url_for('static', filename='home.css') }}">
+  <link rel="stylesheet"
+        href="{{ url_for('static', filename='weekly-goal.css') }}">
 {% endblock %}
 {% block scripts %}
   <script type="module" src="{{ url_for('static', filename='home.js') }}"></script>
@@ -47,6 +49,7 @@
     </div>
     <p id="today-muscles" class="small muted"></p>
   </section>
+  {% include "_weekly_goal.html" %}
   <div class="home-columns">
     <div class="home-main-column">
       <section aria-labelledby="suggested-heading">
