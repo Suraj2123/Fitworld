@@ -8,7 +8,9 @@ SQLite is built into Python and can also be accessed from C++. Flask serves HTML
 
 Run `python -m flask --app fitworld init-db` after installing `requirements.txt`. The database lives at `instance/fitworld.sqlite3`. Each SQL file in `fitworld/migrations/` is applied once, in filename order, and tracked in `schema_migrations`. Each migration runs in a transaction. Re-running `init-db` preserves accounts and history and inserts missing starter catalog definitions.
 
-`001_initial.sql` is the shared initial schema. `002` links scheduled workout logs; `003` adds the team's exercise definitions; `004` reconciles case-only exercise identities while preserving references; `005` adds muscle metadata for new historical snapshots. Add a new numbered migration rather than editing any applied file. Run `init-db` after pulling schema changes. The runner is intended for one developer process at a time.
+`001_initial.sql` is the shared initial schema. `002` links scheduled workout logs; `003` adds the team's exercise definitions; `004` reconciles case-only exercise identities while preserving references; `005` adds muscle metadata for new historical snapshots; `006` adds private catalog ownership; `007` replaces inherited global name constraints with owner-scoped identities. Add a new numbered migration rather than editing any applied file. Run `init-db` after pulling schema changes. The runner is intended for one developer process at a time.
+
+Migration `007` rebuilds referenced parent tables using SQLite's required sequence: disable foreign keys outside the transaction, copy every ID and field, replace the parents, check all foreign keys before committing, and restore enforcement. Only files beginning with `-- fitworld: rebuild-parent-tables` use this runner path. A failure rolls back schema/data/version changes together and restores enforcement. Other connections retain their foreign-key setting; runtime connections always enable it. Existing applied migration files remain unchanged.
 
 Every connection must execute `PRAGMA foreign_keys = ON`. `fitworld.db.get_db()` does so automatically. This is also required for command-line SQL tools and any future C++ connection. See [SQLite's foreign key documentation](https://www.sqlite.org/foreignkeys.html).
 
@@ -38,6 +40,8 @@ erDiagram
     users ||--o{ progress_photos : owns
     users ||--o{ goals : sets
     users ||--o{ milestones : achieves
+    users o|--o{ exercises : optionally_owns
+    users o|--o{ workouts : optionally_owns
 ```
 
 | Tables | Purpose and rules |
@@ -46,7 +50,7 @@ erDiagram
 | `user_profiles` | One row per user: age, current weight in kg, preferred display unit, experience, and current weekly exercise frequency. Age 13–120 and weight 20–400 kg are input bounds for this prototype, not personalized fitness advice. |
 | `workout_preferences` | One row per user: primary goal, training location, desired days per week, and minutes per workout. A preference does not automatically select a routine. |
 | `body_measurements` | Weight history, one reading per user per explicit calendar date. A weight check-in upserts that day's reading and synchronizes the latest profile weight in the same transaction. Metadata-only profile edits do not create a reading. Older callers that omit the date retain a UTC fallback. |
-| `exercises`, `workouts`, `workout_exercises` | Shared catalog with ordered exercises, suggested sets/reps/time, intensity 1–10, and estimated workout duration. Exercise names use SQLite `NOCASE` identity. All exercise definitions are searchable independently of prescriptions. `init-db` adds missing starter examples without seeding user history. |
+| `exercises`, `workouts`, `workout_exercises` | Shared catalog (`user_id IS NULL`) and private owned definitions, with ordered exercises, suggested sets/reps/time, intensity 1–10, and estimated workout duration. Exercise names use SQLite `NOCASE` identity per owner; workout names retain exact-name identity per owner. All visible exercise definitions are searchable independently of prescriptions. `init-db` only seeds shared examples and preserves private definitions. |
 | `routines`, `routine_workouts` | Reusable weekly plans. Days use ISO weekday numbers: Monday = 1, Sunday = 7. Week numbers start at 1. Future writers must check week numbers against `routines.duration_weeks`. |
 | `user_routines` | User enrollment history. A partial unique index permits at most one `active` routine per user; mark the old one `replaced` before adopting a new one, in one transaction. |
 | `scheduled_workouts` | Calendar dates for planned, completed, or skipped workouts. Optional enrollment is checked with a composite foreign key so it must belong to the same user. Dates are explicit rather than derived from the current routine. |

@@ -20,7 +20,9 @@ def workout_history(connection, user_id, page, per_page):
     return {
         "workouts": [dict(row) for row in rows],
         "pagination": {
-            "page": page, "per_page": per_page, "total": total,
+            "page": page,
+            "per_page": per_page,
+            "total": total,
             "total_pages": (total + per_page - 1) // per_page,
             "has_next": page * per_page < total,
         },

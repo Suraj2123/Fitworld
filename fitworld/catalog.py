@@ -1,11 +1,8 @@
 """Shared catalog and routine enrollment; starter data never includes user history."""
 
-import sqlite3
 from datetime import date, timedelta
 
 from werkzeug.exceptions import BadRequest, NotFound
-
-from .validation import ValidationError
 
 GOAL_CATEGORIES = {
     "get_active": "mixed",
@@ -152,11 +149,11 @@ def seed_catalog(connection):
     with connection:
         for name, category, intensity, minutes, description, exercises in STARTERS:
             created = connection.execute(
-                "INSERT INTO workouts (name, category, intensity, estimated_minutes, description, image_path) VALUES (?, ?, ?, ?, ?, ?) ON CONFLICT(name) DO NOTHING",
+                "INSERT INTO workouts (name, category, intensity, estimated_minutes, description, image_path) VALUES (?, ?, ?, ?, ?, ?) ON CONFLICT DO NOTHING",
                 (name, category, intensity, minutes, description, f"/static/art/{category}.svg"),
             ).rowcount
             workout_id = connection.execute(
-                "SELECT id FROM workouts WHERE name=?", (name,)
+                "SELECT id FROM workouts WHERE user_id IS NULL AND name=?", (name,)
             ).fetchone()[0]
             for position, (exercise, muscle, equipment, sets, reps, seconds) in enumerate(
                 exercises, 1
@@ -167,7 +164,8 @@ def seed_catalog(connection):
                 )
                 if created:
                     exercise_id = connection.execute(
-                        "SELECT id FROM exercises WHERE name=? COLLATE NOCASE", (exercise,)
+                        "SELECT id FROM exercises WHERE user_id IS NULL AND name=? COLLATE NOCASE",
+                        (exercise,),
                     ).fetchone()[0]
                     connection.execute(
                         "INSERT INTO workout_exercises (workout_id, exercise_id, position, suggested_sets, suggested_reps, suggested_seconds) VALUES (?, ?, ?, ?, ?, ?)",
@@ -185,7 +183,7 @@ def seed_catalog(connection):
                 for week in range(1, 5):
                     for day, workout in schedule:
                         workout_id = connection.execute(
-                            "SELECT id FROM workouts WHERE name=?", (workout,)
+                            "SELECT id FROM workouts WHERE user_id IS NULL AND name=?", (workout,)
                         ).fetchone()[0]
                         connection.execute(
                             "INSERT INTO routine_workouts (routine_id, workout_id, week_number, day_of_week) VALUES (?, ?, ?, ?)",
@@ -194,9 +192,15 @@ def seed_catalog(connection):
 
 
 def workouts(connection, user, query=""):
-    rows = [dict(row) for row in connection.execute("SELECT * FROM workouts ORDER BY name")]
+    rows = [
+        dict(row)
+        for row in connection.execute(
+            "SELECT * FROM workouts WHERE user_id IS NULL OR user_id=? ORDER BY name", (user["id"],)
+        )
+    ]
     prescriptions = connection.execute(
-        "SELECT we.*, e.name, e.muscle_group, e.equipment FROM workout_exercises we JOIN exercises e ON e.id=we.exercise_id ORDER BY we.workout_id, we.position"
+        "SELECT we.*, e.name, e.muscle_group, e.equipment FROM workout_exercises we JOIN exercises e ON e.id=we.exercise_id JOIN workouts w ON w.id=we.workout_id WHERE (w.user_id IS NULL OR w.user_id=?) AND (e.user_id IS NULL OR e.user_id=?) ORDER BY we.workout_id, we.position",
+        (user["id"], user["id"]),
     ).fetchall()
     by_workout = {}
     for row in prescriptions:
@@ -259,30 +263,14 @@ def workouts(connection, user, query=""):
     return sorted(result, key=lambda workout: (-workout["recommendation_score"], workout["name"]))
 
 
-def workout_detail(connection, workout_id):
+def workout_detail(connection, workout_id, user_id=None):
     # Catalog reading is shared by the detail page and the log validator.
-    for workout in workouts(connection, {"id": -1}):
+    for workout in workouts(connection, {"id": user_id if user_id is not None else -1}):
         if workout["id"] == workout_id:
             return workout
     raise NotFound("This workout is no longer in the catalog.")
 
 
-# Currently only gets catalog exercises
-# def exercises(connection, query=""):
-#     """Exercise guides are searchable even before a workout references them."""
-#     term = query.casefold()
-#     return [
-#         dict(row)
-#         for row in connection.execute("SELECT * FROM exercises ORDER BY name COLLATE NOCASE, id")
-#         if term
-#         in " ".join(
-#             row[key] or "" for key in ("name", "description", "muscle_group", "equipment")
-#         ).casefold()
-#     ]
-
-
-# Get catalog exercises
-# Also get user created workouts, with user_id
 def exercises(connection, user_id, query=""):
     term = query.casefold()
     return [
@@ -409,68 +397,3 @@ def schedule(connection, user_id, starts_on, ends_on):
             (user_id, starts_on, ends_on),
         )
     ]
-
-
-# Adding creation of custom exercises and workouts, and deleting workouts
-def create_exercise(connection, user_id, name, description, muscle_group, equipment):
-    try:
-        cursor = connection.execute(
-            "INSERT INTO exercises (name, description, muscle_group, equipment, user_id) VALUES (?, ?, ?, ?, ?)",
-            (
-                name,
-                description,
-                muscle_group,
-                equipment,
-                user_id,
-            ),
-        )
-        connection.commit()
-
-    except sqlite3.IntegrityError:
-        raise ValidationError({"name": "You already have an exercise with this name."})
-    return connection.execute(
-        "SELECT * FROM exercises WHERE id = ?", (cursor.lastrowid,)
-    ).fetchone()
-
-
-def create_workout(connection, user_id, name, description, intensity, minutes, category, exercises):
-    try:
-        cursor = connection.execute(
-            "INSERT INTO workouts (name, description, intensity, estimated_minutes, category, user_id) VALUES (?, ?, ?, ?, ?, ?)",
-            (name, description, intensity, minutes, category, user_id),
-        )
-        # connection.commit()
-        workout_id = cursor.lastrowid
-
-        # Add exercises into workout_exercises
-        # Enumerate to get distinct position values for each exercise
-        for position, exercise in enumerate(exercises, start=1):
-            connection.execute(
-                "INSERT INTO workout_exercises (workout_id, exercise_id, position, suggested_sets, suggested_reps, suggested_seconds) VALUES (?, ?, ?, ?, ?, ?)",
-                (
-                    workout_id,
-                    exercise.get("exercise_id"),
-                    position,
-                    exercise.get("suggested_sets"),
-                    exercise.get("suggested_reps"),
-                    exercise.get("suggested_seconds"),
-                ),
-            )
-        connection.commit()
-
-    except sqlite3.IntegrityError:
-        raise ValidationError({"name": "You already have workout with this name."})
-    return connection.execute("SELECT * FROM workouts WHERE id = ?", (cursor.lastrowid,)).fetchone()
-
-
-def delete_workout(connection, user_id, workout_id):
-    workout = connection.execute(
-        "SELECT * FROM workouts WHERE id = ? AND user_id = ?", (workout_id, user_id)
-    ).fetchone()
-
-    # Selected workout to delete doesn't exist
-    if workout is None:
-        raise NotFound()
-    # Delete workouts from database, according to workout_id
-    connection.execute("DELETE FROM workouts WHERE id = ?", (workout_id,))
-    connection.commit()

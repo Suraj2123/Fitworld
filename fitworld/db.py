@@ -36,14 +36,25 @@ def migrate():
             # Files are trusted repository SQL; changes and version record commit together.
             script = path.read_text()
             version = path.name.replace("'", "''")
+            # SQLite requires foreign keys off outside the transaction when rebuilding
+            # a referenced table. Only explicitly marked migrations use this path.
+            rebuild = script.startswith("-- fitworld: rebuild-parent-tables\n")
+            if rebuild:
+                connection.execute("PRAGMA foreign_keys = OFF")
             try:
                 connection.executescript(
                     f"BEGIN IMMEDIATE;\n{script}\n"
-                    f"INSERT INTO schema_migrations (version) VALUES ('{version}');\nCOMMIT;"
+                    f"INSERT INTO schema_migrations (version) VALUES ('{version}');\n"
                 )
+                if rebuild and connection.execute("PRAGMA foreign_key_check").fetchone():
+                    raise sqlite3.IntegrityError("Migration would leave broken foreign keys.")
+                connection.commit()
             except sqlite3.Error:
                 connection.rollback()
                 raise
+            finally:
+                if rebuild:
+                    connection.execute("PRAGMA foreign_keys = ON")
 
 
 @click.command("init-db")

@@ -9,9 +9,9 @@ function files(directory) {
   });
 }
 
-const sources = ["fitworld/static", "tests/js", "scripts"]
+const sources = ["fitworld/static", "tests", "scripts"]
   .flatMap(files)
-  .filter((path) => /\.(m?js)$/.test(path));
+  .filter((path) => /\.([cm]?js)$/.test(path));
 for (const source of sources) {
   const result = spawnSync(process.execPath, ["--check", source], { stdio: "inherit" });
   if (result.error) throw result.error;

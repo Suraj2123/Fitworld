@@ -6,8 +6,8 @@
   "scripts": {
     "check:js": "node scripts/check-js.mjs",
     "test:js": "node --test tests/js/*.test.js",
-    "format:check": "prettier --check \"fitworld/static/**/*.{js,css}\" \"tests/js/**/*.js\" \"scripts/**/*.mjs\"",
-    "format": "prettier --write \"fitworld/static/**/*.{js,css}\" \"tests/js/**/*.js\" \"scripts/**/*.mjs\""
+    "format:check": "prettier --check \"fitworld/static/**/*.{js,css}\" \"tests/**/*.{js,mjs,cjs}\" \"scripts/**/*.mjs\"",
+    "format": "prettier --write \"fitworld/static/**/*.{js,css}\" \"tests/**/*.{js,mjs,cjs}\" \"scripts/**/*.mjs\""
   },
   "devDependencies": { "prettier": "3.9.10" }
 }

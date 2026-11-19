@@ -9,6 +9,7 @@ The pages share authenticated navigation, data contracts, and UI primitives. Pag
 | `fitworld/api.py` | Account sessions, onboarding, CSRF token creation, and the shared authentication decorator. |
 | `fitworld/app_api.py` | HTTP adapters: validate request shape, obtain the account from the session, call a domain module, return JSON. App endpoints also require completed onboarding. |
 | `fitworld/catalog.py` | Shared workout/routine definitions, starter seeding, recommendation ordering, routine replacement, and schedules. |
+| `fitworld/custom_catalog.py` | Typed validation and atomic creation/deletion of private definitions, including ownership of nested exercises. Catalog readers apply shared-or-owned visibility consistently. |
 | `fitworld/activity.py` | Validate and persist workout sets and meals, check scheduled-session ownership, and delete private activity atomically. |
 | `fitworld/reports.py` | Daily workout/nutrition read model used by both Home and Progress. Nutrient totals preserve unknown values. |
 | `fitworld/progress.py` | Month boundaries, complete/partial calendar counts, weekly averages, exercise comparisons, and weight history. |
@@ -20,6 +21,7 @@ The pages share authenticated navigation, data contracts, and UI primitives. Pag
 | `static/js/client.js` | JSON requests, CSRF handling, local calendar dates, number/unit formatting, safe DOM creation, and form feedback. |
 | `static/js/http.js` | Shared transport for both onboarding and app pages; CSRF rotation, timeout, and structured errors without page/session side effects. |
 | `static/js/activity-ui.js` | Render saved workout, food, and nutrition details consistently across pages. |
+| `static/js/meal-composer.js`, `static/js/meal-draft.js` | Manage multi-food drafts/reuse and calculate a nutrition preview. Authoritative validation and saved totals remain on the server. |
 | `static/js/weekly-goal-ui.js`, `static/weekly-goal.css`, `templates/_weekly_goal.html` | Shared accessible weekly goal display, daily activity links, and optional recent-week comparison. Page controllers choose the date and refresh after activity changes. |
 | `static/js/workout-ui.js` | Shared workout cards, details, actual-set logging, and schedule rendering. |
 | `static/home.js`, `static/js/workouts.js`, `static/js/progress.js` | Page-specific state and composition. Each page loads its own module. |
@@ -43,9 +45,12 @@ All app endpoints require an authenticated, onboarded user. Writes require the s
 
 | Method and endpoint | Contract |
 | --- | --- |
-| `GET /api/workouts?q=…` | `{workouts: [...]}` ordered by active routine, goal, experience, duration, and workout-space preferences. Each entry includes ordered prescriptions and equipment. Search covers workout names/descriptions and exercise names. |
+| `GET /api/workouts?q=…` | `{workouts: [...]}` includes shared definitions and the acting user's private workouts, ordered by active routine, goal, experience, duration, and workout-space preferences. Each entry includes ordered prescriptions and equipment. Search covers workout names/descriptions and exercise names. |
 | `GET /api/workouts/<id>` | `{workout: {...}}` with descriptions, intensity, minutes, and exercises. |
-| `GET /api/exercises?q=…` | `{exercises: [...]}` searches names, descriptions, muscle groups, and equipment, including definitions outside starter workouts. |
+| `GET /api/exercises?q=…` | `{exercises: [...]}` searches shared and owned private definitions by name, description, muscle group, and equipment, including definitions outside starter workouts. |
+| `POST /api/exercises` | Required `name` (1–100 characters), `description` (1–500), `muscle_group` and `equipment` (1–100 each). Creates a private exercise and returns `{exercise}` with HTTP 201. Names use `NOCASE` uniqueness per owner; another account or the shared catalog may use the same name. |
+| `POST /api/workouts/custom` | Required `name` (1–100), `description` (1–500), integer `intensity` (1–10), integer `estimated_minutes` (15–90), supported `category`, and 1–50 distinct exercise prescriptions. Each supplies a shared/owned `exercise_id`, optional integer `suggested_sets` (1–20, default 1), and positive integer `suggested_reps` (up to 10,000) or `suggested_seconds` (up to 86,400). Maximum 200 total sets. Returns `{workout}` with HTTP 201, including ordered prescriptions. Workout names retain exact-name uniqueness, now per owner. |
+| `DELETE /api/workouts/<id>` | Removes only an owned private definition and its prescriptions. Existing logs retain names, muscle snapshots and actual sets; their nullable workout reference becomes null. Shared/other-owner IDs return 404. A definition referenced by a routine or schedule returns 409. Returns `{deleted: true}`. |
 | `GET /api/routines?q=…&today=YYYY-MM-DD` | `{routines: [...], current: object or null}`. Each routine includes its explicit week/day schedule. A current enrollment also includes `ends_on` and `is_finished`; the UI permits restarting it. |
 | `POST /api/routines/<id>/select` | `{starts_on}`. Returns `{current}`. The same routine/start is safe to select again. Replacing a plan preserves earlier sessions and skips future planned sessions from the old enrollment. |
 | `GET /api/schedule?from=YYYY-MM-DD&to=YYYY-MM-DD` | `{schedule: [...]}` scoped to the account. Maximum range: 366 days. |
@@ -61,6 +66,8 @@ All app endpoints require an authenticated, onboarded user. Writes require the s
 | `POST /api/progress/measurements` | `measured_on`, `weight`, `unit_system` (`metric` or `imperial`). Upserts that day's measurement. Returns `{measurement}` with HTTP 201. Backdating does not replace the latest profile weight. |
 
 Validation returns HTTP 422 with `{error, fields}`. Unknown private records return 404, including attempts to access another account's entry. Missing authentication returns 401, unfinished onboarding and conflicting scheduled completion return 409, malformed JSON returns 400, and missing CSRF returns 403. The browser never automatically retries a write after a timeout; it asks the user to refresh and check whether it saved.
+
+Private definition creation/deletion is currently an API capability. Existing workout cards, exercise guides, and logging dialogs display owned definitions; a new visual builder was not part of the incoming backend contribution. The server always obtains the owner from the session and ignores body-supplied ownership.
 
 ## Progress calculations
 

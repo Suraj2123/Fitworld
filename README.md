@@ -22,6 +22,8 @@ Open [Fitworld locally](http://127.0.0.1:5001). Create an account, complete onbo
 
 Run `init-db` again after pulling schema changes. The quality-review migrations preserve existing exercise references and add historical muscle snapshots; existing logs without those details remain explicitly unknown.
 
+The team integration adds private custom exercise/workout definitions through authenticated endpoints, alongside multi-food meals, workout history, and weekly goals. Migrations `006` and `007` add ownership and scope names per owner while preserving IDs and historical references. Run `init-db` before starting the updated app. See [the integration review](docs/branch-integration-review.md) for the reviewed branches, corrections, and validation.
+
 The backend is Python/Flask with parameterized SQLite queries. The frontend is HTML, CSS, and native JavaScript modules; it requires no Node installation, frontend build, database service, or external API credentials. Node is only an optional development tool for JavaScript syntax checks.
 
 ## Pages
@@ -64,6 +66,7 @@ For weekly goals, log two completed workouts on one day and confirm it counts on
 
 - [Contribution workflow and automated quality checks](CONTRIBUTING.md)
 - [Design patterns, review findings, and change guidance](docs/design-and-quality.md)
+- [Team branch integration and quality review](docs/branch-integration-review.md)
 - [Home logging update, demo walkthrough, and verification](docs/home-logging-update.md)
 - [Module structure, endpoint contract, and extension guide](docs/integration.md)
 - [Database diagram, ownership rules, and queries](docs/database.md)

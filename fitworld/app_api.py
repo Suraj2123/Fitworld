@@ -5,10 +5,10 @@ from functools import wraps
 
 from flask import Blueprint, g, jsonify, request
 
-from . import activity, catalog, measurements, progress, reports, weekly_goals
+from . import activity, catalog, custom_catalog, measurements, progress, reports, weekly_goals
 from .api import authenticated, invalid_form, payload
 from .db import get_db
-from .validation import Form, ValidationError, iso_date
+from .validation import ValidationError, iso_date
 
 bp = Blueprint("app_api", __name__, url_prefix="/api")
 bp.register_error_handler(ValidationError, invalid_form)
@@ -33,14 +33,6 @@ def get_workouts():
     )
 
 
-# @bp.get("/exercises")
-# @onboarded
-# def get_exercises():
-#     return jsonify(exercises=catalog.exercises(get_db(), request.args.get("q", "").strip()[:200]))
-
-
-# Changing get_exercises because of change in exercises function in catalog
-# catalog.exercises now also gets user created workouts, as well as catalog exercises
 @bp.get("/exercises")
 @onboarded
 def get_exercises():
@@ -52,7 +44,7 @@ def get_exercises():
 @bp.get("/workouts/<int:workout_id>")
 @onboarded
 def get_workout(workout_id):
-    return jsonify(workout=catalog.workout_detail(get_db(), workout_id))
+    return jsonify(workout=catalog.workout_detail(get_db(), workout_id, g.user["id"]))
 
 
 @bp.get("/routines")
@@ -105,7 +97,12 @@ def get_workout_history():
     pagination = {}
     for key, default, maximum in (("page", "1", 2147483647), ("per_page", "20", 100)):
         value = request.args.get(key, default)
-        if not value.isascii() or not value.isdigit() or len(value) > 10 or not 1 <= int(value) <= maximum:
+        if (
+            not value.isascii()
+            or not value.isdigit()
+            or len(value) > 10
+            or not 1 <= int(value) <= maximum
+        ):
             raise ValidationError({key: f"Choose a whole number between 1 and {maximum}."})
         pagination[key] = int(value)
     return jsonify(reports.workout_history(get_db(), g.user["id"], **pagination))
@@ -161,61 +158,20 @@ def get_weekly_progress():
     return jsonify(weekly_goals.weekly_progress(get_db(), g.user["id"], selected, today))
 
 
-# Adding creation of custom exercises and workouts, and deleting workouts
 @bp.post("/exercises")
-# @authenticated
 @onboarded
 def create_exercise():
-    data = payload()
-    form = Form(data)
-
-    name = form.text("name", "Exercise name", maximum=100)
-    description = form.text("description", "Description", maximum=500)
-    muscle_group = form.text("muscle_group", "Muscle group", maximum=100)
-    equipment = form.text("equipment", "Equipment", maximum=100)
-    form.finish()
-
-    # Call create_exercise function in catalog.py
-    exercise = catalog.create_exercise(
-        get_db(), g.user["id"], name, description, muscle_group, equipment
-    )
-    return jsonify(exercise=exercise), 201
+    return jsonify(exercise=custom_catalog.create_exercise(get_db(), g.user["id"], payload())), 201
 
 
 @bp.post("/workouts/custom")
-# @authenticated
 @onboarded
 def create_custom_workout():
-    data = payload()
-    form = Form(data)
-
-    name = form.text("name", "Workout name", maximum=100)
-    description = form.text("description", "Description", maximum=500)
-    intensity = form.number("intensity", "intensity", 1, 10, integer=True)
-    minutes = form.number("estimated_minutes", "session length", 15, 90, integer=True)
-    category = form.choice(
-        "category", {"strength", "cardio", "mobility", "recovery", "mixed"}, "a category"
-    )
-    form.finish()
-
-    exercises = data.get("exercises")
-    if not isinstance(exercises, list) or len(exercises) == 0:
-        raise ValidationError({"exercises": "Add at least one exercise."})
-
-    # Call create_workout function in catalog.py
-    workout = catalog.create_workout(
-        get_db(), g.user["id"], name, description, intensity, minutes, category, exercises
-    )
-
-    return jsonify(workout=workout), 201
+    return jsonify(workout=custom_catalog.create_workout(get_db(), g.user["id"], payload())), 201
 
 
-# DIFFERENT FROM PREVIOUS remove_workout
-# Instead of deleting workouts from log, delete user created workouts from the database
 @bp.delete("/workouts/<int:workout_id>")
-# @authenticated
 @onboarded
 def remove_custom_workout(workout_id):
-    # Call delete_workout function in catalog.py
-    catalog.delete_workout(get_db(), g.user["id"], workout_id)
+    custom_catalog.delete_workout(get_db(), g.user["id"], workout_id)
     return jsonify(deleted=True)

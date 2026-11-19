@@ -38,7 +38,7 @@ def log_workout(connection, user_id, data):
     form.finish()
     performed_on = iso_date(data.get("performed_on"), "performed_on", historical=True)
     workout = (
-        workout_detail(connection, workout_id)
+        workout_detail(connection, workout_id, user_id)
         if workout_id is not None
         else {"name": workout_name, "exercises": []}
     )
