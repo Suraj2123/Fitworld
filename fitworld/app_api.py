@@ -32,18 +32,21 @@ def get_workouts():
         workouts=catalog.workouts(get_db(), g.user, request.args.get("q", "").strip()[:200])
     )
 
+
 # @bp.get("/exercises")
 # @onboarded
 # def get_exercises():
 #     return jsonify(exercises=catalog.exercises(get_db(), request.args.get("q", "").strip()[:200]))
+
 
 # Changing get_exercises because of change in exercises function in catalog
 # catalog.exercises now also gets user created workouts, as well as catalog exercises
 @bp.get("/exercises")
 @onboarded
 def get_exercises():
-    return jsonify(exercises=catalog.exercises(get_db(), g.user["id"], request.args.get("q", "").strip()[:200]))
-
+    return jsonify(
+        exercises=catalog.exercises(get_db(), g.user["id"], request.args.get("q", "").strip()[:200])
+    )
 
 
 @bp.get("/workouts/<int:workout_id>")
@@ -150,11 +153,14 @@ def create_exercise():
     description = form.text("description", "Description", maximum=500)
     muscle_group = form.text("muscle_group", "Muscle group", maximum=100)
     equipment = form.text("equipment", "Equipment", maximum=100)
-    form.finish() 
+    form.finish()
 
     # Call create_exercise function in catalog.py
-    exercise = catalog.create_exercise(get_db(), g.user["id"], name, description, muscle_group, equipment)
+    exercise = catalog.create_exercise(
+        get_db(), g.user["id"], name, description, muscle_group, equipment
+    )
     return jsonify(exercise=exercise), 201
+
 
 @bp.post("/workouts/custom")
 # @authenticated
@@ -167,7 +173,9 @@ def create_custom_workout():
     description = form.text("description", "Description", maximum=500)
     intensity = form.number("intensity", "intensity", 1, 10, integer=True)
     minutes = form.number("estimated_minutes", "session length", 15, 90, integer=True)
-    category = form.choice("category", {"strength", "cardio", "mobility", "recovery", "mixed"}, "a category")
+    category = form.choice(
+        "category", {"strength", "cardio", "mobility", "recovery", "mixed"}, "a category"
+    )
     form.finish()
 
     exercises = data.get("exercises")
@@ -175,9 +183,12 @@ def create_custom_workout():
         raise ValidationError({"exercises": "Add at least one exercise."})
 
     # Call create_workout function in catalog.py
-    workout = catalog.create_workout(get_db(), g.user["id"], name, description, intensity, minutes, category, exercises)
+    workout = catalog.create_workout(
+        get_db(), g.user["id"], name, description, intensity, minutes, category, exercises
+    )
 
     return jsonify(workout=workout), 201
+
 
 # DIFFERENT FROM PREVIOUS remove_workout
 # Instead of deleting workouts from log, delete user created workouts from the database

@@ -1,6 +1,5 @@
 """Shared catalog and routine enrollment; starter data never includes user history."""
 
-
 import sqlite3
 from datetime import date, timedelta
 
@@ -281,20 +280,23 @@ def workout_detail(connection, workout_id):
 #         ).casefold()
 #     ]
 
+
 # Get catalog exercises
 # Also get user created workouts, with user_id
 def exercises(connection, user_id, query=""):
     term = query.casefold()
     return [
         dict(row)
-        for row in connection.execute("SELECT * FROM exercises WHERE user_id IS NULL OR user_id = ? ORDER BY name COLLATE NOCASE, id",
-                                      (user_id,)
-                                      )
+        for row in connection.execute(
+            "SELECT * FROM exercises WHERE user_id IS NULL OR user_id = ? ORDER BY name COLLATE NOCASE, id",
+            (user_id,),
+        )
         if term
         in " ".join(
             row[key] or "" for key in ("name", "description", "muscle_group", "equipment")
         ).casefold()
     ]
+
 
 def routines(connection, user, query=""):
     result = []
@@ -408,50 +410,67 @@ def schedule(connection, user_id, starts_on, ends_on):
         )
     ]
 
+
 # Adding creation of custom exercises and workouts, and deleting workouts
 def create_exercise(connection, user_id, name, description, muscle_group, equipment):
-    try: 
-        cursor = connection.execute("INSERT INTO exercises (name, description, muscle_group, equipment, user_id) VALUES (?, ?, ?, ?, ?)",
-                                    (name, description, muscle_group, equipment, user_id,),
-                                    )
+    try:
+        cursor = connection.execute(
+            "INSERT INTO exercises (name, description, muscle_group, equipment, user_id) VALUES (?, ?, ?, ?, ?)",
+            (
+                name,
+                description,
+                muscle_group,
+                equipment,
+                user_id,
+            ),
+        )
         connection.commit()
 
     except sqlite3.IntegrityError:
         raise ValidationError({"name": "You already have an exercise with this name."})
-    return connection.execute("SELECT * FROM exercises WHERE id = ?", 
-                              (cursor.lastrowid,)
-                              ).fetchone()
+    return connection.execute(
+        "SELECT * FROM exercises WHERE id = ?", (cursor.lastrowid,)
+    ).fetchone()
+
 
 def create_workout(connection, user_id, name, description, intensity, minutes, category, exercises):
-    try: 
-        cursor = connection.execute("INSERT INTO workouts (name, description, intensity, estimated_minutes, category, user_id) VALUES (?, ?, ?, ?, ?, ?)",
-                                    (name, description, intensity, minutes, category, user_id)
-                                    )
+    try:
+        cursor = connection.execute(
+            "INSERT INTO workouts (name, description, intensity, estimated_minutes, category, user_id) VALUES (?, ?, ?, ?, ?, ?)",
+            (name, description, intensity, minutes, category, user_id),
+        )
         # connection.commit()
         workout_id = cursor.lastrowid
 
         # Add exercises into workout_exercises
         # Enumerate to get distinct position values for each exercise
         for position, exercise in enumerate(exercises, start=1):
-            connection.execute("INSERT INTO workout_exercises (workout_id, exercise_id, position, suggested_sets, suggested_reps, suggested_seconds) VALUES (?, ?, ?, ?, ?, ?)", 
-                               (workout_id, exercise.get("exercise_id"), position, exercise.get("suggested_sets"), exercise.get("suggested_reps"), exercise.get("suggested_seconds"))
-                               )
+            connection.execute(
+                "INSERT INTO workout_exercises (workout_id, exercise_id, position, suggested_sets, suggested_reps, suggested_seconds) VALUES (?, ?, ?, ?, ?, ?)",
+                (
+                    workout_id,
+                    exercise.get("exercise_id"),
+                    position,
+                    exercise.get("suggested_sets"),
+                    exercise.get("suggested_reps"),
+                    exercise.get("suggested_seconds"),
+                ),
+            )
         connection.commit()
 
     except sqlite3.IntegrityError:
         raise ValidationError({"name": "You already have workout with this name."})
     return connection.execute("SELECT * FROM workouts WHERE id = ?", (cursor.lastrowid,)).fetchone()
 
+
 def delete_workout(connection, user_id, workout_id):
-    workout = connection.execute("SELECT * FROM workouts WHERE id = ? AND user_id = ?",
-                                (workout_id, user_id)
-                                ).fetchone()
+    workout = connection.execute(
+        "SELECT * FROM workouts WHERE id = ? AND user_id = ?", (workout_id, user_id)
+    ).fetchone()
 
     # Selected workout to delete doesn't exist
     if workout is None:
         raise NotFound()
     # Delete workouts from database, according to workout_id
-    connection.execute("DELETE FROM workouts WHERE id = ?",
-                       (workout_id,)
-                        )
+    connection.execute("DELETE FROM workouts WHERE id = ?", (workout_id,))
     connection.commit()
