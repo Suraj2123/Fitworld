@@ -18,12 +18,16 @@ export function initMealRecovery(composer, userId, getDate, selectDate) {
   }
   try {
     const raw = sessionStorage.getItem(key);
-    if (raw) {
+    if (raw && !composer.hasDraft()) {
       const draft = JSON.parse(raw);
       if (
         !draft ||
         !/^\d{4}-\d{2}-\d{2}$/.test(draft.date) ||
         typeof draft.meal_name !== "string" ||
+        (draft.editing &&
+          (!Number.isSafeInteger(draft.editing.id) ||
+            draft.editing.id < 1 ||
+            !/^\d{4}-\d{2}-\d{2}$/.test(draft.editing.date))) ||
         !Array.isArray(draft.items) ||
         !draft.items.length ||
         draft.items.length > 50 ||

@@ -140,7 +140,7 @@ export function initMealComposer() {
       editing,
     }),
     restore(draft) {
-      load(
+      return load(
         { ...draft, id: draft.editing?.id, consumed_on: draft.editing?.date },
         Boolean(draft.editing),
       );

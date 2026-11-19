@@ -83,6 +83,12 @@ export function showWorkout(workout) {
 }
 
 export function openLog(workoutId, date = localDate(), scheduleId = null) {
+  if (!catalog.length || (workoutId && !catalog.some((item) => item.id === workoutId))) {
+    notify(
+      "Workout details are unavailable. Retry workout suggestions or use the manual workout form.",
+    );
+    return;
+  }
   const form = $("#workout-log-form");
   form.reset();
   form.querySelector(".form-error").hidden = true;

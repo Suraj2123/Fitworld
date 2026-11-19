@@ -31,7 +31,7 @@ export function initMealSearch(composer, library) {
         library.favorite,
       );
       $("#meal-search-count").textContent = data.pagination.total
-        ? `${data.pagination.total} meals · Page ${page} of ${data.pagination.total_pages}`
+        ? `${data.pagination.total} ${data.pagination.total === 1 ? "meal" : "meals"} · Page ${page} of ${data.pagination.total_pages}`
         : "No matching meals.";
       $("#meal-search-previous").disabled = page === 1;
       $("#meal-search-next").disabled = !data.pagination.has_next;

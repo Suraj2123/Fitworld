@@ -11,6 +11,7 @@ export function initManualWorkout() {
     $("#cancel-workout-edit").hidden = true;
     $("#workout-edit-status").textContent = "";
     form.querySelector(".form-error").hidden = true;
+    form.dispatchEvent(new Event("workout:draft"));
   }
   $("#cancel-workout-edit").addEventListener("click", reset);
   form.querySelector('[type="reset"]').addEventListener("click", (event) => {
@@ -40,6 +41,7 @@ export function initManualWorkout() {
       $("#workout-edit-status").textContent =
         `Editing ${workout.workout_name} from ${workout.performed_on}. Changes stay on that date.`;
       form.querySelector("details").open = true;
+      form.dispatchEvent(new Event("workout:draft"));
       form.elements.workout_name.focus();
     },
   };

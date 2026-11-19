@@ -113,13 +113,13 @@ def recent_foods(connection, user_id):
     """Most recently logged nutrition for each food/serving pair, within this account."""
     rows = connection.execute(
         """SELECT * FROM (
-            SELECT i.*, ROW_NUMBER() OVER (
+            SELECT i.*, n.consumed_on AS last_used_on, ROW_NUMBER() OVER (
                 PARTITION BY lower(i.food_name), lower(i.serving_description)
                 ORDER BY n.consumed_on DESC, n.id DESC, i.id DESC
             ) AS position
             FROM nutrition_items i JOIN nutrition_logs n ON n.id=i.nutrition_log_id
             WHERE n.user_id=?
-        ) WHERE position=1 ORDER BY nutrition_log_id DESC, id DESC LIMIT 20""",
+         ) WHERE position=1 ORDER BY last_used_on DESC, nutrition_log_id DESC, id DESC LIMIT 20""",
         (user_id,),
     )
     return [dict(row) for row in rows]

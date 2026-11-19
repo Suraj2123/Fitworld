@@ -1,7 +1,8 @@
 import { $, api, el, empty, notify, showError } from "./client.js";
 
 export function initMealLibrary(composer) {
-  let revision = 0;
+  let revision = 0,
+    favoriteRevision = 0;
   async function recent() {
     const current = ++revision;
     const container = $("#recent-foods");
@@ -30,9 +31,11 @@ export function initMealLibrary(composer) {
     }
   }
   async function favorites() {
+    const current = ++favoriteRevision;
     const container = $("#favorite-meals");
     try {
       const { meals } = await api("meals/favorites");
+      if (current !== favoriteRevision) return;
       container.replaceChildren();
       if (!meals.length)
         empty(container, "Choose Favorite meal on a saved entry to keep a reusable template.");
@@ -67,6 +70,7 @@ export function initMealLibrary(composer) {
         container.append(row);
       });
     } catch {
+      if (current !== favoriteRevision) return;
       empty(container, "Favorite meals couldn’t load.");
       const retry = el("button", "text-button", "Retry favorites");
       retry.type = "button";

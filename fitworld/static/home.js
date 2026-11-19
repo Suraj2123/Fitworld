@@ -38,14 +38,19 @@ dateInput.max = localDate();
 let revision = 0;
 function updateDateLabels() {
   const label = dateLabel(dateInput.value, { month: "long", day: "numeric", year: "numeric" });
-  $("#logging-date").textContent = `Food and manual workouts will be saved for ${label}.`;
-  $("#food-date-note").textContent = `Saving this meal for ${label}.`;
-  $("#workout-date-note").textContent = `Saving this workout for ${label}.`;
+  $("#logging-date").textContent =
+    `New entries will be saved for ${label}. Edits keep the original entry’s date.`;
+  $("#food-date-note").textContent =
+    `Saving this meal for ${mealComposer.editing() ? dateLabel(mealComposer.editing().date) : label}.`;
+  $("#workout-date-note").textContent =
+    `Saving this workout for ${manualWorkout.editing() ? dateLabel(manualWorkout.editing().date) : label}.`;
   $("#next-day").disabled = dateInput.value >= localDate();
   $("#previous-day").disabled = dateInput.value <= "1900-01-01";
   $("#today-button").disabled = dateInput.value === localDate();
 }
 updateDateLabels();
+$("#food-form").addEventListener("meal:draft", updateDateLabels);
+$("#workout-form").addEventListener("workout:draft", updateDateLabels);
 
 function sectionError(container, message, retry) {
   container.removeAttribute("aria-busy");
@@ -254,6 +259,7 @@ document.addEventListener("fitworld:activity", (event) => {
   dateInput.value = event.detail.date;
   history.replaceState({}, "", `/home?date=${dateInput.value}`);
   refresh().catch(showError);
+  document.dispatchEvent(new Event("fitworld:date"));
 });
 
 async function loadCatalog() {

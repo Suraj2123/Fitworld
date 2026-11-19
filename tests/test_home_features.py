@@ -1,4 +1,10 @@
+import tempfile
+from pathlib import Path
+
 from support import AppCase
+
+from fitworld import create_app
+from fitworld.db import get_db, migrate
 
 
 class HomeFeatureTests(AppCase):
@@ -147,3 +153,53 @@ class HomeFeatureTests(AppCase):
         self.assertEqual(
             self.client.get("/api/activity/meals?meal_category=invalid").status_code, 422
         )
+
+    def test_populated_upgrade_preserves_meals_items_and_favorite_snapshots(self):
+        with tempfile.TemporaryDirectory() as folder:
+            app = create_app(
+                {
+                    "TESTING": True,
+                    "SECRET_KEY": "test-only",
+                    "DATABASE": str(Path(folder) / "old.sqlite3"),
+                }
+            )
+            with app.app_context():
+                db = get_db()
+                db.execute("CREATE TABLE schema_migrations (version TEXT PRIMARY KEY)")
+                migrations = Path(__file__).parents[1] / "fitworld/migrations"
+                for path in sorted(migrations.glob("*.sql")):
+                    if path.name.startswith("009_"):
+                        break
+                    db.executescript(path.read_text())
+                    db.execute("INSERT INTO schema_migrations VALUES (?)", (path.name,))
+                    db.commit()
+                db.execute(
+                    "INSERT INTO users (id,email,display_name,password_hash) VALUES (1000,'old@example.com','Old','hash')"
+                )
+                db.execute(
+                    "INSERT INTO nutrition_logs (id,user_id,consumed_on,meal_name,source) VALUES (1000,1000,'2026-01-05','Lunch','manual')"
+                )
+                db.execute(
+                    "INSERT INTO nutrition_items (id,nutrition_log_id,food_name,serving_description,servings,calories_per_serving) VALUES (1000,1000,'Oats','cup',2,150)"
+                )
+                db.execute(
+                    "INSERT INTO favorite_meals (id,user_id,name,items_json) VALUES (1000,1000,'Old favorite','[]')"
+                )
+                db.commit()
+                migrate()
+                migrate()
+                meal = db.execute("SELECT * FROM nutrition_logs WHERE id=1000").fetchone()
+                self.assertEqual(
+                    (meal["meal_name"], meal["meal_category"]), ("Lunch", "uncategorized")
+                )
+                item = db.execute("SELECT * FROM nutrition_items WHERE id=1000").fetchone()
+                self.assertEqual(
+                    (item["nutrition_log_id"], item["servings"], item["calories_per_serving"]),
+                    (1000, 2, 150),
+                )
+                favorite = db.execute("SELECT * FROM favorite_meals WHERE id=1000").fetchone()
+                self.assertEqual(
+                    (favorite["name"], favorite["items_json"], favorite["meal_category"]),
+                    ("Old favorite", "[]", "uncategorized"),
+                )
+                self.assertEqual(db.execute("PRAGMA foreign_key_check").fetchall(), [])
