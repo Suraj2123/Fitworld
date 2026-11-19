@@ -178,7 +178,18 @@ $("#workout-form").addEventListener("submit", (event) =>
   saveForm(event, async (data) => {
     if (!data.workout_name.trim()) throw new Error("Enter a workout name.");
     const selected = dateInput.value;
-    await api("activity/workouts", "POST", { ...data, performed_on: selected });
+    const controls = [...$("#workout-form").querySelectorAll("input, select, textarea, button")];
+    const disabled = controls.map((control) => control.disabled);
+    controls.forEach((control) => {
+      control.disabled = true;
+    });
+    try {
+      await api("activity/workouts", "POST", { ...data, performed_on: selected });
+    } finally {
+      controls.forEach((control, index) => {
+        control.disabled = disabled[index];
+      });
+    }
     $("#workout-form").reset();
     $("#workout-name").focus();
     notify(`Workout saved for ${dateLabel(selected)}.`);

@@ -118,6 +118,29 @@ const assert = require("node:assert/strict");
   assert.equal(await page.locator("#add-meal-item").isEnabled(), true);
   await page.unroute("**/api/activity/meals");
   await page.locator("#clear-meal").click();
+  // An in-flight manual save locks every field; rejection restores the draft.
+  await page.locator("#workout-name").fill("Protected walk");
+  await page.locator("#workout-minutes").fill("15");
+  let releaseWorkout;
+  await page.route("**/api/activity/workouts", async (route) => {
+    await new Promise((resolve) => {
+      releaseWorkout = resolve;
+    });
+    await route.fulfill({
+      status: 422,
+      contentType: "application/json",
+      body: JSON.stringify({ error: "Test workout rejection" }),
+    });
+  });
+  await page.locator("#workout-form [type=submit]").click();
+  await page.waitForFunction(() => document.querySelector("#workout-name").disabled);
+  assert.equal(await page.locator("#manual-workout-status").isDisabled(), true);
+  assert.equal(await page.locator("#manual-notes").isDisabled(), true);
+  releaseWorkout();
+  await page.waitForSelector("#workout-form .form-error:not([hidden])");
+  assert.equal(await page.locator("#workout-name").inputValue(), "Protected walk");
+  assert.equal(await page.locator("#workout-name").isEnabled(), true);
+  await page.unroute("**/api/activity/workouts");
   await page.locator("#food-heading").click();
   await page.waitForTimeout(5100);
   await page.evaluate(() => window.scrollTo(0, 0));
