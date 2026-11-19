@@ -103,3 +103,24 @@ class HomeFeatureTests(AppCase):
         self.assertEqual(
             self.write(f"meals/favorites/{favorite_id}", method="DELETE").status_code, 200
         )
+
+    def test_meal_search_matches_food_and_dates_with_stable_pagination(self):
+        for _ in range(12):
+            self.food()
+        page = self.client.get("/api/activity/meals?q=oat&from=2026-01-05&to=2026-01-05").json
+        self.assertEqual(len(page["meals"]), 10)
+        self.assertTrue(page["pagination"]["has_next"])
+        second = self.client.get("/api/activity/meals?q=oat&page=2").json
+        self.assertEqual(len(second["meals"]), 2)
+        self.assertFalse(
+            set(row["id"] for row in page["meals"]) & set(row["id"] for row in second["meals"])
+        )
+        self.assertEqual(self.client.get("/api/activity/meals?q=%25").json["meals"], [])
+        self.assertEqual(self.client.get("/api/activity/meals?from=2026-01-06").json["meals"], [])
+        self.assertEqual(self.client.get("/api/activity/meals?page=0").status_code, 422)
+        self.assertEqual(
+            self.client.get("/api/activity/meals?from=2026-02-01&to=2026-01-01").status_code, 422
+        )
+        other = self.app.test_client()
+        self.create_account(other, "other@example.com")
+        self.assertEqual(other.get("/api/activity/meals?q=oat").json["meals"], [])

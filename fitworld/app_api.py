@@ -17,7 +17,7 @@ from . import (
 )
 from .api import authenticated, invalid_form, payload
 from .db import get_db
-from .validation import ValidationError, iso_date
+from .validation import Form, ValidationError, iso_date
 
 bp = Blueprint("app_api", __name__, url_prefix="/api")
 bp.register_error_handler(ValidationError, invalid_form)
@@ -221,3 +221,17 @@ def save_favorite_meal():
 def remove_favorite_meal(favorite_id):
     meal_library.delete_favorite(get_db(), g.user["id"], favorite_id)
     return jsonify(deleted=True)
+
+
+@bp.get("/activity/meals")
+@onboarded
+def get_meal_history():
+    form = Form(request.args)
+    query = form.text("q", "Search", 200, minimum=0) if "q" in request.args else ""
+    page = form.number("page", "page", 1, 1000000, integer=True) if "page" in request.args else 1
+    form.finish()
+    start = iso_date(request.args["from"], "from") if request.args.get("from") else ""
+    end = iso_date(request.args["to"], "to") if request.args.get("to") else ""
+    if start and end and start > end:
+        raise ValidationError({"to": "The end date must be on or after the start date."})
+    return jsonify(reports.meal_history(get_db(), g.user["id"], query, start, end, page))

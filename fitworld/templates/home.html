@@ -228,6 +228,43 @@
         <div id="daily-nutrition" class="home-nutrition"></div>
         <p class="small muted">Partial totals exclude foods with unknown nutrients.</p>
         <div id="food-list"></div>
+        <details class="meal-history">
+          <summary>Find previous meals</summary>
+          <form id="meal-search-form">
+            <div class="form-error error-box" role="alert" tabindex="-1" hidden></div>
+            <label for="meal-query">Meal or food name</label>
+            <input id="meal-query" name="q" type="search" maxlength="200">
+            <div class="form-grid">
+              <div>
+                <label for="meal-from">From</label><input id="meal-from"
+                                                          name="from"
+                                                          type="date"
+                                                          min="1900-01-01"
+                                                          max="2100-12-31">
+              </div>
+              <div>
+                <label for="meal-to">Through</label><input id="meal-to"
+                                                           name="to"
+                                                           type="date"
+                                                           min="1900-01-01"
+                                                           max="2100-12-31">
+              </div>
+            </div>
+            <button type="submit" class="secondary-button">Search meals</button>
+          </form>
+          <p id="meal-search-count" role="status"></p>
+          <div id="meal-search-results"></div>
+          <div class="button-row">
+            <button id="meal-search-previous"
+                    type="button"
+                    class="text-button"
+                    disabled>Previous results</button>
+            <button id="meal-search-next"
+                    type="button"
+                    class="text-button"
+                    disabled>Next results</button>
+          </div>
+        </details>
       </section>
     </aside>
   </div>

@@ -123,3 +123,40 @@ def recent_foods(connection, user_id):
         (user_id,),
     )
     return [dict(row) for row in rows]
+
+
+def meal_history(connection, user_id, query, start, end, page):
+    """Search meal and food names with bounded, stable pagination."""
+    where = """n.user_id=? AND (?='' OR instr(lower(n.meal_name), lower(?))>0 OR EXISTS (
+        SELECT 1 FROM nutrition_items i WHERE i.nutrition_log_id=n.id
+        AND instr(lower(i.food_name), lower(?))>0))
+        AND (?='' OR n.consumed_on>=?) AND (?='' OR n.consumed_on<=?)"""
+    params = (user_id, query, query, query, start, start, end, end)
+    total = connection.execute(
+        f"SELECT COUNT(*) FROM nutrition_logs n WHERE {where}", params
+    ).fetchone()[0]
+    meals = []
+    for row in connection.execute(
+        f"SELECT n.* FROM nutrition_logs n WHERE {where} ORDER BY n.consumed_on DESC, n.id DESC LIMIT 10 OFFSET ?",
+        (*params, (page - 1) * 10),
+    ):
+        meal = dict(row)
+        meal["items"] = [
+            dict(item)
+            for item in connection.execute(
+                "SELECT * FROM nutrition_items WHERE nutrition_log_id=? ORDER BY id", (meal["id"],)
+            )
+        ]
+        meal["calories"] = sum(
+            item["servings"] * item["calories_per_serving"] for item in meal["items"]
+        )
+        meals.append(meal)
+    return {
+        "meals": meals,
+        "pagination": {
+            "page": page,
+            "total": total,
+            "total_pages": (total + 9) // 10,
+            "has_next": page * 10 < total,
+        },
+    }

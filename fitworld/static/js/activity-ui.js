@@ -78,6 +78,11 @@ export function renderMeals(container, data, onReuse, onEdit, onFavorite) {
       el("span", "badge", `${number(meal.calories)} kcal`),
     );
     card.append(heading);
+    if (data.showDates) {
+      const date = el("a", "text-link", meal.consumed_on);
+      date.href = `/home?date=${meal.consumed_on}`;
+      card.append(date);
+    }
     meal.items.forEach((item) => {
       card.append(
         el(
@@ -133,7 +138,7 @@ export function renderMeals(container, data, onReuse, onEdit, onFavorite) {
       removeEntry(
         "meals",
         meal.id,
-        data.date,
+        meal.consumed_on || data.date,
         document.body.dataset.page === "home" ? "#meal-items input" : "#day-heading",
       ),
     );

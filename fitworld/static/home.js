@@ -22,11 +22,13 @@ import { renderWeeklyGoal } from "./js/weekly-goal-ui.js";
 
 import { initMealComposer } from "./js/meal-composer.js";
 
+import { initMealSearch } from "./js/meal-search.js";
 import { initMealRecovery } from "./js/meal-recovery.js";
 import { initManualWorkout } from "./js/manual-workout.js";
 import { initMealLibrary } from "./js/meal-library.js";
 const mealComposer = initMealComposer();
 const mealLibrary = initMealLibrary(mealComposer);
+const mealSearch = initMealSearch(mealComposer, mealLibrary);
 const manualWorkout = initManualWorkout();
 const dateInput = $("#home-date");
 dateInput.value = new URLSearchParams(location.search).get("date") || localDate();
@@ -211,6 +213,7 @@ $("#food-form").addEventListener("submit", (event) =>
     }
     mealComposer.reset();
     mealLibrary.refresh();
+    mealSearch.refresh();
     $("#meal-items input").focus();
     notify(`Meal saved for ${dateLabel(selected)}.`);
     refresh().catch(showError);
@@ -245,6 +248,8 @@ $("#workout-form").addEventListener("submit", (event) =>
   }),
 );
 document.addEventListener("fitworld:activity", (event) => {
+  mealLibrary.refresh();
+  mealSearch.refresh();
   dateInput.value = event.detail.date;
   history.replaceState({}, "", `/home?date=${dateInput.value}`);
   refresh().catch(showError);
@@ -275,6 +280,12 @@ async function loadRoutine() {
 async function boot() {
   const account = await session;
   initMealRecovery(mealComposer, account.user.id, () => dateInput.value, selectDate);
-  await Promise.all([loadCatalog(), loadRoutine(), refresh(), mealLibrary.refresh()]);
+  await Promise.all([
+    loadCatalog(),
+    loadRoutine(),
+    refresh(),
+    mealLibrary.refresh(),
+    mealSearch.refresh(),
+  ]);
 }
 boot().catch(showError);
