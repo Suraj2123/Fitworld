@@ -87,7 +87,7 @@ export async function saveForm(event, save) {
     showError(problem, error, form);
   } finally {
     button.disabled = false;
-    button.textContent = original;
+    button.textContent = form.dataset.submitLabel || original;
     form.removeAttribute("aria-busy");
     form.dataset.busy = "false";
   }

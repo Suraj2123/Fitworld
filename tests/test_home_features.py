@@ -1,0 +1,39 @@
+from support import AppCase
+
+
+class HomeFeatureTests(AppCase):
+    def meal_payload(self, **changes):
+        data = {
+            "meal_name": "Breakfast",
+            "consumed_on": self.day,
+            "items": [
+                {
+                    "food_name": "Oats",
+                    "serving_description": "cup",
+                    "servings": 1,
+                    "calories_per_serving": 150,
+                }
+            ],
+        }
+        data.update(changes)
+        return data
+
+    def test_edit_meal_preserves_id_and_recalculates_totals(self):
+        log_id = self.food().json["id"]
+        response = self.write(f"activity/meals/{log_id}", self.meal_payload(), "PUT")
+        self.assertEqual(response.status_code, 200)
+        day = self.day_data()
+        self.assertEqual(day["meals"][0]["id"], log_id)
+        self.assertEqual(len(day["meals"]), 1)
+        self.assertEqual(day["nutrition"]["calories"]["known_total"], 150)
+        self.assertEqual(day["nutrition"]["protein_g"]["missing_items"], 1)
+
+    def test_invalid_or_foreign_meal_edit_leaves_original_intact(self):
+        log_id = self.food().json["id"]
+        response = self.write(f"activity/meals/{log_id}", self.meal_payload(items=[]), "PUT")
+        self.assertEqual(response.status_code, 422)
+        other = self.app.test_client()
+        self.create_account(other, "other@example.com")
+        response = self.write(f"activity/meals/{log_id}", self.meal_payload(), "PUT", other)
+        self.assertEqual(response.status_code, 404)
+        self.assertEqual(self.day_data()["nutrition"]["calories"]["known_total"], 300)

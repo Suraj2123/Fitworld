@@ -138,7 +138,7 @@ function renderDay(day) {
   $("#calorie-total").textContent = number(day.nutrition.calories.known_total, 0);
   $("#workout-total").textContent = number(summary.duration_minutes);
   renderWorkouts($("#today-workouts"), day);
-  renderMeals($("#food-list"), day, mealComposer.reuse);
+  renderMeals($("#food-list"), day, mealComposer.reuse, mealComposer.edit);
 }
 
 function renderRecent(recent) {
@@ -181,7 +181,7 @@ $("#jump-food").addEventListener("click", () => {
 $("#food-form").addEventListener("submit", (event) =>
   saveForm(event, async (data) => {
     const items = mealComposer.items(),
-      selected = dateInput.value;
+      selected = mealComposer.editing()?.date || dateInput.value;
     if (items.some((item) => !item.food_name)) throw new Error("Enter a name for every food.");
     const controls = [...$("#food-form").querySelectorAll("input, button, textarea")];
     const disabled = controls.map((control) => control.disabled);
@@ -189,11 +189,15 @@ $("#food-form").addEventListener("submit", (event) =>
       control.disabled = true;
     });
     try {
-      await api("activity/meals", "POST", {
-        meal_name: data.meal_name.trim() || items[0].food_name,
-        consumed_on: selected,
-        items,
-      });
+      await api(
+        mealComposer.editing() ? `activity/meals/${mealComposer.editing().id}` : "activity/meals",
+        mealComposer.editing() ? "PUT" : "POST",
+        {
+          meal_name: data.meal_name.trim() || items[0].food_name,
+          consumed_on: selected,
+          items,
+        },
+      );
     } finally {
       controls.forEach((control, index) => {
         control.disabled = disabled[index];

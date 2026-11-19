@@ -4,7 +4,8 @@ import { mealTotals } from "./meal-draft.js";
 export function initMealComposer() {
   const container = $("#meal-items"),
     form = $("#food-form");
-  let serial = 0;
+  let serial = 0,
+    editing = null;
   function items() {
     return [...container.children].map((row) =>
       Object.fromEntries(
@@ -69,6 +70,11 @@ export function initMealComposer() {
     if (focus) row.querySelector("input").focus();
   }
   function reset() {
+    editing = null;
+    form.dataset.submitLabel = "Save meal";
+    form.querySelector('[type="submit"]').textContent = "Save meal";
+    $("#clear-meal").textContent = "Clear draft";
+    $("#meal-edit-status").textContent = "";
     form.reset();
     container.replaceChildren();
     add({}, false);
@@ -80,29 +86,48 @@ export function initMealComposer() {
     container.querySelector("input").focus();
   });
   reset();
+  function hasDraft() {
+    return (
+      editing ||
+      $("#meal-name").value.trim() ||
+      items().some((item) =>
+        Object.entries(item).some(([key, value]) =>
+          key === "servings" ? value !== "1" : value !== "",
+        ),
+      )
+    );
+  }
+  function load(meal, edit = false) {
+    if (form.dataset.busy === "true") return false;
+    if (hasDraft()) {
+      notify("Save or clear your current meal draft before opening another meal.");
+      form.scrollIntoView({ block: "center" });
+      return false;
+    }
+    container.replaceChildren();
+    $("#meal-name").value = meal.meal_name;
+    meal.items.forEach((item) => add(item, false));
+    container.querySelector("input").focus();
+    if (edit) {
+      editing = { id: meal.id, date: meal.consumed_on };
+      form.dataset.submitLabel = "Save changes";
+      form.querySelector('[type="submit"]').textContent = "Save changes";
+      $("#clear-meal").textContent = "Cancel editing";
+      $("#meal-edit-status").textContent =
+        `Editing ${meal.meal_name} from ${meal.consumed_on}. Changes stay on that date.`;
+    }
+    notify(
+      edit
+        ? "Meal ready to edit. Save changes when finished."
+        : "Meal copied to your draft. Choose a date, adjust servings, then save.",
+    );
+    return true;
+  }
   return {
     items,
     reset,
-    reuse(meal) {
-      if (form.dataset.busy === "true") return;
-      // Preserve an existing draft rather than silently replacing entered food.
-      const hasDraft =
-        $("#meal-name").value.trim() ||
-        items().some((item) =>
-          Object.entries(item).some(([key, value]) =>
-            key === "servings" ? value !== "1" : value !== "",
-          ),
-        );
-      if (hasDraft) {
-        notify("Save or clear your current meal draft before reusing a meal.");
-        form.scrollIntoView({ block: "center" });
-        return;
-      }
-      container.replaceChildren();
-      $("#meal-name").value = meal.meal_name;
-      meal.items.forEach((item) => add(item, false));
-      container.querySelector("input").focus();
-      notify("Meal copied to your draft. Choose a date, adjust servings, then save.");
-    },
+    editing: () => editing,
+    reuse: (meal) => load(meal),
+    edit: (meal) => load(meal, true),
   };
 }

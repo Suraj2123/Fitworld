@@ -134,11 +134,10 @@ NUTRIENTS = {
 }
 
 
-def log_meal(connection, user_id, data):
+def validate_meal(data):
     form = Form(data)
     meal_name = form.text("meal_name", "Meal name", 120)
     form.finish()
-    consumed_on = iso_date(data.get("consumed_on"), "consumed_on", historical=True)
     items = data.get("items")
     if not isinstance(items, list) or not 1 <= len(items) <= 50:
         raise ValidationError({"items": "Add between 1 and 50 foods to your meal."})
@@ -158,11 +157,29 @@ def log_meal(connection, user_id, data):
         if entry.errors:
             raise ValidationError(entry.errors)
         values.append((name, serving, servings, calories, *nutrients))
+    return meal_name, values
+
+
+def log_meal(connection, user_id, data, log_id=None):
+    meal_name, values = validate_meal(data)
+    consumed_on = iso_date(data.get("consumed_on"), "consumed_on", historical=True)
     with connection:
-        log_id = connection.execute(
-            "INSERT INTO nutrition_logs (user_id, consumed_on, meal_name, source) VALUES (?, ?, ?, 'manual')",
-            (user_id, consumed_on, meal_name),
-        ).lastrowid
+        connection.execute("BEGIN IMMEDIATE")
+        if log_id is None:
+            log_id = connection.execute(
+                "INSERT INTO nutrition_logs (user_id, consumed_on, meal_name, source) VALUES (?, ?, ?, 'manual')",
+                (user_id, consumed_on, meal_name),
+            ).lastrowid
+        else:
+            if not connection.execute(
+                "SELECT 1 FROM nutrition_logs WHERE id=? AND user_id=?", (log_id, user_id)
+            ).fetchone():
+                raise NotFound("This meal was not found in your account.")
+            connection.execute(
+                "UPDATE nutrition_logs SET meal_name=?, consumed_on=? WHERE id=? AND user_id=?",
+                (meal_name, consumed_on, log_id, user_id),
+            )
+            connection.execute("DELETE FROM nutrition_items WHERE nutrition_log_id=?", (log_id,))
         connection.executemany(
             "INSERT INTO nutrition_items (nutrition_log_id, food_name, serving_description, servings, calories_per_serving, protein_g_per_serving, carbs_g_per_serving, fat_g_per_serving, sodium_mg_per_serving) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
             [(log_id, *item) for item in values],

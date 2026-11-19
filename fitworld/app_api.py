@@ -175,3 +175,9 @@ def create_custom_workout():
 def remove_custom_workout(workout_id):
     custom_catalog.delete_workout(get_db(), g.user["id"], workout_id)
     return jsonify(deleted=True)
+
+
+@bp.put("/activity/meals/<int:log_id>")
+@onboarded
+def edit_meal(log_id):
+    return jsonify(id=activity.log_meal(get_db(), g.user["id"], payload(), log_id))

@@ -54,7 +54,7 @@ export function renderWorkouts(container, data) {
   });
 }
 
-export function renderMeals(container, data, onReuse) {
+export function renderMeals(container, data, onReuse, onEdit) {
   container.replaceChildren();
   if (!data.meals.length) return empty(container, "No food logged for this day yet.");
   data.meals.forEach((meal) => {
@@ -85,6 +85,13 @@ export function renderMeals(container, data, onReuse) {
       );
       card.append(el("p", "small muted", parts.join(" · ")));
     });
+    if (onEdit) {
+      const edit = el("button", "text-button", "Edit meal");
+      edit.type = "button";
+      edit.setAttribute("aria-label", `Edit ${meal.meal_name}`);
+      edit.addEventListener("click", () => onEdit(meal));
+      card.append(edit);
+    }
     if (onReuse) {
       const reuse = el("button", "text-button", "Use as new meal");
       reuse.type = "button";
