@@ -9,14 +9,20 @@ The pages share authenticated navigation, data contracts, and UI primitives. Pag
 | `fitworld/api.py` | Account sessions, onboarding, CSRF token creation, and the shared authentication decorator. |
 | `fitworld/app_api.py` | HTTP adapters: validate request shape, obtain the account from the session, call a domain module, return JSON. App endpoints also require completed onboarding. |
 | `fitworld/catalog.py` | Shared workout/routine definitions, starter seeding, recommendation ordering, routine replacement, and schedules. |
+| `fitworld/custom_catalog.py` | Typed validation and atomic creation/deletion of private definitions, including ownership of nested exercises. Catalog readers apply shared-or-owned visibility consistently. |
 | `fitworld/activity.py` | Validate and persist workout sets and meals, check scheduled-session ownership, and delete private activity atomically. |
 | `fitworld/reports.py` | Daily workout/nutrition read model used by both Home and Progress. Nutrient totals preserve unknown values. |
 | `fitworld/progress.py` | Month boundaries, complete/partial calendar counts, weekly averages, exercise comparisons, and weight history. |
+| `fitworld/weekly_goals.py` | Read a Monday–Sunday week and four preceding weeks against the saved weekly target, counting distinct completed-workout days through local today. |
+| `fitworld/profiles.py`, `fitworld/measurements.py` | Profile/preference writes and shared dated weight check-ins, with explicit transaction ownership and metadata-only edit handling. |
 | `fitworld/validation.py` | Shared typed form validation and canonical kg conversion for body weight. |
 | `fitworld/views.py` | Page access control and server-rendered routes. |
 | `templates/app_base.html`, `static/app.css` | Navigation, dialogs, shared layouts, form controls, typography, and color tokens. Page styles add composition rather than replacing these controls. |
 | `static/js/client.js` | JSON requests, CSRF handling, local calendar dates, number/unit formatting, safe DOM creation, and form feedback. |
+| `static/js/http.js` | Shared transport for both onboarding and app pages; CSRF rotation, timeout, and structured errors without page/session side effects. |
 | `static/js/activity-ui.js` | Render saved workout, food, and nutrition details consistently across pages. |
+| `static/js/meal-composer.js`, `static/js/meal-draft.js` | Manage multi-food drafts/reuse and calculate a nutrition preview. Authoritative validation and saved totals remain on the server. |
+| `static/js/weekly-goal-ui.js`, `static/weekly-goal.css`, `templates/_weekly_goal.html` | Shared accessible weekly goal display, daily activity links, and optional recent-week comparison. Page controllers choose the date and refresh after activity changes. |
 | `static/js/workout-ui.js` | Shared workout cards, details, actual-set logging, and schedule rendering. |
 | `static/home.js`, `static/js/workouts.js`, `static/js/progress.js` | Page-specific state and composition. Each page loads its own module. |
 
@@ -39,30 +45,42 @@ All app endpoints require an authenticated, onboarded user. Writes require the s
 
 | Method and endpoint | Contract |
 | --- | --- |
-| `GET /api/workouts?q=…` | `{workouts: [...]}` ordered by active routine, goal, experience, duration, and workout-space preferences. Each entry includes ordered prescriptions and equipment. Search covers workout names/descriptions and exercise names. |
+| `GET /api/workouts?q=…` | `{workouts: [...]}` includes shared definitions and the acting user's private workouts, ordered by active routine, goal, experience, duration, and workout-space preferences. Each entry includes ordered prescriptions and equipment. Search covers workout names/descriptions and exercise names. |
 | `GET /api/workouts/<id>` | `{workout: {...}}` with descriptions, intensity, minutes, and exercises. |
-| `GET /api/routines?q=…` | `{routines: [...], current: object or null}`. Each routine includes its explicit week/day schedule. |
+| `GET /api/exercises?q=…` | `{exercises: [...]}` searches shared and owned private definitions by name, description, muscle group, and equipment, including definitions outside starter workouts. |
+| `POST /api/exercises` | Required `name` (1–100 characters), `description` (1–500), `muscle_group` and `equipment` (1–100 each). Creates a private exercise and returns `{exercise}` with HTTP 201. Names use `NOCASE` uniqueness per owner; another account or the shared catalog may use the same name. |
+| `POST /api/workouts/custom` | Required `name` (1–100), `description` (1–500), integer `intensity` (1–10), integer `estimated_minutes` (15–90), supported `category`, and 1–50 distinct exercise prescriptions. Each supplies a shared/owned `exercise_id`, optional integer `suggested_sets` (1–20, default 1), and positive integer `suggested_reps` (up to 10,000) or `suggested_seconds` (up to 86,400). Maximum 200 total sets. Returns `{workout}` with HTTP 201, including ordered prescriptions. Workout names retain exact-name uniqueness, now per owner. |
+| `DELETE /api/workouts/<id>` | Removes only an owned private definition and its prescriptions. Existing logs retain names, muscle snapshots and actual sets; their nullable workout reference becomes null. Shared/other-owner IDs return 404. A definition referenced by a routine or schedule returns 409. Returns `{deleted: true}`. |
+| `GET /api/routines?q=…&today=YYYY-MM-DD` | `{routines: [...], current: object or null}`. Each routine includes its explicit week/day schedule. A current enrollment also includes `ends_on` and `is_finished`; the UI permits restarting it. |
 | `POST /api/routines/<id>/select` | `{starts_on}`. Returns `{current}`. The same routine/start is safe to select again. Replacing a plan preserves earlier sessions and skips future planned sessions from the old enrollment. |
 | `GET /api/schedule?from=YYYY-MM-DD&to=YYYY-MM-DD` | `{schedule: [...]}` scoped to the account. Maximum range: 366 days. |
 | `GET /api/activity?date=YYYY-MM-DD` | `{date, workouts, meals, nutrition, summary}`. Used by Home and the Progress day detail. |
 | `GET /api/activity/recent` | `{workouts: [...]}` with the eight most recent completed/partial logs, ordered by performed date. |
+| `GET /api/activity/workouts?page=1&per_page=20` | Saved workout history for the signed-in account, including completed/partial and custom workouts. Returns `{workouts: [...], pagination: {page, per_page, total, total_pages, has_next}}`. Defaults: page 1, 20 entries; `page` is 1–2147483647 and `per_page` is 1–100. Ordered by performed date, start timestamp, then ID, all descending. Empty or out-of-range pages return an empty list; an empty history has zero total pages. Invalid pagination returns 422. Reads existing `workout_logs`; no migration required. |
 | `POST /api/activity/workouts` | `performed_on`, `duration_minutes`, `status` (`completed` or `partial`), and either a catalog `workout_id` or a free-text `workout_name`. Manual workouts require a whole duration of at least one minute. Catalog workouts also support optional `estimated_calories`, `notes`, `scheduled_workout_id`, and `exercises`. Returns `{id}` with HTTP 201. Each actual set supplies `exercise_id`, `set_number`, and reps or duration; optional load is `load_kg`. An unrecorded set must be omitted. |
 | `POST /api/activity/meals` | `meal_name`, `consumed_on`, and 1–50 `items`. Each item supplies `food_name`, `serving_description`, `servings`, `calories_per_serving`, and optional per-serving nutrients. Returns `{id}` with HTTP 201. Source is manual. |
 | `DELETE /api/activity/workouts/<id>` | Remove an owned log and its sets, updating the linked schedule. Returns `{deleted: true}`. |
 | `DELETE /api/activity/meals/<id>` | Remove an owned meal and its food items. Returns `{deleted: true}`. |
 | `GET /api/progress?month=YYYY-MM&today=YYYY-MM-DD` | `{month, starts_on, ends_on, summary, days, records, measurements, milestones}`. `today` supplies the browser's local calendar date for the monthly-average denominator. |
+| `GET /api/progress/weekly?date=YYYY-MM-DD&today=YYYY-MM-DD` | `{selected_date, as_of, target_days, target_basis, week, history}`. `date` selects a whole Monday–Sunday week; it defaults to `today`. Both accept the existing date range (1900–2100). `today` defaults to the server date for older callers; current clients always send their local date. `target_basis` is `current_preference`. Each week includes dates, `period` (`past`, `current`, `future`), distinct `completed_days`, `remaining_days`, `goal_met`, and seven `days` with completed/partial counts, `is_future`, and `is_supported_date`. History contains the previous four weeks, newest first; weeks before 1900 are omitted. Dates beyond 2100 in the final calendar week have no activity links. |
 | `POST /api/progress/measurements` | `measured_on`, `weight`, `unit_system` (`metric` or `imperial`). Upserts that day's measurement. Returns `{measurement}` with HTTP 201. Backdating does not replace the latest profile weight. |
 
 Validation returns HTTP 422 with `{error, fields}`. Unknown private records return 404, including attempts to access another account's entry. Missing authentication returns 401, unfinished onboarding and conflicting scheduled completion return 409, malformed JSON returns 400, and missing CSRF returns 403. The browser never automatically retries a write after a timeout; it asks the user to refresh and check whether it saved.
+
+Private definition creation/deletion is currently an API capability. Existing workout cards, exercise guides, and logging dialogs display owned definitions; a new visual builder was not part of the incoming backend contribution. The server always obtains the owner from the session and ignores body-supplied ownership.
 
 ## Progress calculations
 
 - Calendar days show completed and partial workouts independently. A partial workout contributes actual time and an active day, but does not count as a completed workout or establish a personal benchmark.
 - The weekly average is `completed × 7 / calendar days`: elapsed days in the current month, all days in a past month. The UI shows the denominator explicitly. An empty month has zero totals.
+- Weekly goals count **distinct days** with at least one completed workout, including manual workouts. Partial-only days, meals, planned sessions, and activity after the supplied local `today` do not count. The selected date chooses the whole week, including days outside the selected month; it is not a historical cutoff. `today` is the cutoff. Actual counts may exceed the target; the visual meter fills at the target while the exact count stays visible. Goal history is a comparison with the current preference, not a record of earlier targets. Reads derive counts from logs, so backdated entries, removals, and preference changes appear immediately without cached counters or achievement writes.
+- A failed weekly request displays an error within the goal display while daily activity still loads. Page controllers retain their existing revision checks so an older response cannot replace a newer selected day.
 - Exercise benchmarks compare the best recorded load or longest recorded set duration in the chosen month with the best from completed workouts before that month. A first benchmark is labeled as a baseline, with no invented improvement. Longer duration is not interpreted as faster performance.
 - Meals and workout totals are read independently, so adding food cannot multiply workout counts or calories burned. Calories burned are recorded estimates; blank values remain unknown.
 - Nutrition multiplies per-serving values by servings. Each nutrient returns `known_total` and `missing_items`; an unknown protein value is distinct from zero protein. Partial totals are labeled.
 - Weight history returns the last 30 measurements up to the selected month's end. Graphs are accompanied by an accessible table with the exact dates and preferred-unit values. There is no claim that every user should change weight in one direction.
+- Profile updates accept optional `measured_on` and `record_weight`. Current clients send the browser's local date and explicit weight intent. Metadata-only saves preserve the latest weight; older callers without a date retain a UTC fallback.
+- New workout logs snapshot their muscle metadata. Legacy logs without recorded sets leave that detail unknown rather than inferring it from today's catalog.
 
 ## Adding the next feature
 
@@ -70,6 +88,7 @@ Validation returns HTTP 422 with `{error, fields}`. Unknown private records retu
 - **New progress metric:** add a field to the report and a renderer on Progress. Daily logs and other pages keep their existing contracts.
 - **Editing logged activity:** add owned update operations to `activity.py` and use the existing transaction/schedule relationship. Existing removal plus re-entry is available for correcting a log now.
 - **Goals/milestone generation:** existing `goals` and `milestones` remain available. The page reads real stored milestones; a later achievement writer can create them without changing the calendar or nutrition logic.
+- **Weekly goal changes:** keep counting and date rules in `weekly_goals.py`; Home and Progress share that module and renderer. The function accepts the connection and authenticated user ID, and tests cross the same HTTP interface as the browser. If historical targets become a requirement, add effective-dated preference records in a new migration and a new explicit target-basis contract rather than pretending current comparisons are historical achievements. The existing `goals`/`milestones` tables remain available for separate goal or achievement writers.
 - **Photos or food analysis:** use the existing private photo/storage-key tables, add authorization on every read, and place analysis behind a server-side module with an explicit provider. The current UI uses manual nutrition and local vector catalog illustrations.
 
 Public deployment needs the managed session key, HTTPS, production WSGI server, login rate limiting, and account recovery/verification described in the database guide. This contribution is the local course-project application.

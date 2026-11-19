@@ -28,20 +28,33 @@ def migrate():
         "(version TEXT PRIMARY KEY, applied_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP)"
     )
     connection.commit()
-    applied = {row["version"] for row in connection.execute("SELECT version FROM schema_migrations")}
+    applied = {
+        row["version"] for row in connection.execute("SELECT version FROM schema_migrations")
+    }
     for path in sorted((Path(__file__).parent / "migrations").glob("*.sql")):
         if path.name not in applied:
             # Files are trusted repository SQL; changes and version record commit together.
             script = path.read_text()
             version = path.name.replace("'", "''")
+            # SQLite requires foreign keys off outside the transaction when rebuilding
+            # a referenced table. Only explicitly marked migrations use this path.
+            rebuild = script.startswith("-- fitworld: rebuild-parent-tables\n")
+            if rebuild:
+                connection.execute("PRAGMA foreign_keys = OFF")
             try:
                 connection.executescript(
                     f"BEGIN IMMEDIATE;\n{script}\n"
-                    f"INSERT INTO schema_migrations (version) VALUES ('{version}');\nCOMMIT;"
+                    f"INSERT INTO schema_migrations (version) VALUES ('{version}');\n"
                 )
+                if rebuild and connection.execute("PRAGMA foreign_key_check").fetchone():
+                    raise sqlite3.IntegrityError("Migration would leave broken foreign keys.")
+                connection.commit()
             except sqlite3.Error:
                 connection.rollback()
                 raise
+            finally:
+                if rebuild:
+                    connection.execute("PRAGMA foreign_keys = ON")
 
 
 @click.command("init-db")
@@ -49,6 +62,7 @@ def init_db_command():
     """Apply pending migrations without deleting existing data."""
     migrate()
     from .catalog import seed_catalog
+
     seed_catalog(get_db())
     click.echo("Database is up to date. Missing starter catalog entries have been added.")
 

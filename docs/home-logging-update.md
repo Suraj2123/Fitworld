@@ -52,7 +52,7 @@ Run the automated tests from the repository:
 
 ```sh
 .venv/bin/python -m unittest discover -s tests -v
-node --test tests/meal-draft.test.mjs
+npm run test:js
 ```
 
 Optional browser regression check (requires Chrome and the Playwright development package):
@@ -68,4 +68,4 @@ The browser server uses a temporary database on port 5057. Stop it with Ctrl+C w
 
 ## Scope and remaining limits
 
-Changes are local on `feature/home-page`; they have not been committed, pushed, or merged. Meal reuse is available from the currently viewed day's entries: open the source date first, copy the meal, and then change to the destination date. Drafts survive date changes but do not survive a full page reload. Editing an already saved meal in place and a searchable favorite-food library remain separate future improvements. Nutrition and calorie estimates are manually entered, not automatically inferred.
+The Home contribution is integrated with the current shared transport, weekly goals, history endpoint, and private catalog. The verification counts above describe its original branch checks; current combined checks are recorded in [the integration review](branch-integration-review.md). Meal reuse is available from the currently viewed day's entries: open the source date first, copy the meal, and then change to the destination date. Drafts survive date changes but do not survive a full page reload. Editing an already saved meal in place and a searchable favorite-food library remain separate future improvements. Nutrition and calorie estimates are manually entered, not automatically inferred.

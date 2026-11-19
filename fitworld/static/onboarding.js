@@ -1,28 +1,31 @@
 "use strict";
+import { request } from "./js/http.js";
 
 const $ = (selector) => document.querySelector(selector);
 const stages = ["account", "baseline", "rhythm", "review", "ready"];
-const state = { user: null, csrf: "", login: false, busy: false, unit: "metric", stage: 0 };
-const goals = { get_active: "Get more active", build_strength: "Build strength", improve_endurance: "Go the distance", improve_mobility: "Move more freely" };
-const levels = { beginner: "Finding my feet", intermediate: "Building momentum", advanced: "Raising the bar" };
+const state = {
+  user: null,
+  login: false,
+  busy: false,
+  unit: "metric",
+  stage: 0,
+  weightEdited: false,
+};
+const goals = {
+  get_active: "Get more active",
+  build_strength: "Build strength",
+  improve_endurance: "Go the distance",
+  improve_mobility: "Move more freely",
+};
+const levels = {
+  beginner: "Finding my feet",
+  intermediate: "Building momentum",
+  advanced: "Raising the bar",
+};
 const locations = { home: "At home", gym: "At the gym", outdoors: "Outdoors" };
 
 async function api(path, method = "GET", data) {
-  const response = await fetch(`/api/${path}`, {
-    method,
-    credentials: "same-origin",
-    headers: { "Content-Type": "application/json", "X-CSRF-Token": state.csrf },
-    body: data === undefined ? undefined : JSON.stringify(data),
-    signal: AbortSignal.timeout(15000),
-  });
-  const result = await response.json();
-  if (!response.ok) {
-    const error = new Error(result.error || "Something went wrong. Please try again.");
-    error.fields = result.fields || {};
-    error.status = response.status;
-    throw error;
-  }
-  if (result.csrf_token) state.csrf = result.csrf_token;
+  const result = await request(path, method, data);
   if (Object.hasOwn(result, "user")) state.user = result.user;
   return result;
 }
@@ -45,7 +48,9 @@ function navigate(stage, replace = false, focus = true) {
   if (window.location.hash !== hash) {
     window.history[replace ? "replaceState" : "pushState"]({}, "", hash);
   }
-  document.querySelectorAll(".panel").forEach((panel, index) => { panel.hidden = index !== stage; });
+  document.querySelectorAll(".panel").forEach((panel, index) => {
+    panel.hidden = index !== stage;
+  });
   document.querySelectorAll("[data-step]").forEach((button) => {
     const index = Number(button.dataset.step);
     const done = index < max || (index === 3 && max === 4);
@@ -70,6 +75,7 @@ function fillForms() {
   $("#baseline-form").reset();
   $("#rhythm-form").reset();
   state.unit = "metric";
+  state.weightEdited = false;
   if (profile) {
     state.unit = profile.unit_system;
     $("#age").value = profile.age;
@@ -88,7 +94,12 @@ function fillForms() {
 }
 
 function displayedWeight(profile) {
-  return Number((profile.unit_system === "imperial" ? profile.weight_kg / 0.45359237 : profile.weight_kg).toFixed(1));
+  return Number(
+    (profile.unit_system === "imperial"
+      ? profile.weight_kg / 0.45359237
+      : profile.weight_kg
+    ).toFixed(1),
+  );
 }
 
 function fillSummary(prefix) {
@@ -106,10 +117,16 @@ function fillSummary(prefix) {
   top.append(kicker, goal);
   const list = document.createElement("dl");
   const details = [
-    ["Your baseline", `${profile.age} years · ${displayedWeight(profile)} ${profile.unit_system === "imperial" ? "lb" : "kg"}`],
+    [
+      "Your baseline",
+      `${profile.age} years · ${displayedWeight(profile)} ${profile.unit_system === "imperial" ? "lb" : "kg"}`,
+    ],
     ["Experience", levels[profile.experience_level]],
     ["Current pace", `${profile.current_workouts_per_week} workouts / week`],
-    ["Weekly goal", `${preferences.target_days_per_week} ${preferences.target_days_per_week === 1 ? "day" : "days"} / week`],
+    [
+      "Weekly goal",
+      `${preferences.target_days_per_week} ${preferences.target_days_per_week === 1 ? "day" : "days"} / week`,
+    ],
     ["Workout space", locations[preferences.training_location]],
     ["Time for you", `${preferences.session_minutes} minutes / workout`],
   ];
@@ -127,7 +144,9 @@ function fillSummary(prefix) {
 
 function clearErrors(form) {
   form.querySelectorAll("[aria-invalid]").forEach((field) => field.removeAttribute("aria-invalid"));
-  form.querySelectorAll(".field-error").forEach((field) => { field.textContent = ""; });
+  form.querySelectorAll(".field-error").forEach((field) => {
+    field.textContent = "";
+  });
   const summary = form.querySelector(".error-summary");
   summary.hidden = true;
   summary.replaceChildren();
@@ -137,7 +156,10 @@ function showErrors(form, error) {
   clearErrors(form);
   const summary = form.querySelector(".error-summary");
   const message = document.createElement("p");
-  message.textContent = error.status === 401 && state.user ? "Your session ended. Reload the page to sign in again." : error.message;
+  message.textContent =
+    error.status === 401 && state.user
+      ? "Your session ended. Reload the page to sign in again."
+      : error.message;
   summary.append(message);
   const list = document.createElement("ul");
   Object.entries(error.fields || {}).forEach(([key, text]) => {
@@ -153,7 +175,10 @@ function showErrors(form, error) {
     const link = document.createElement("a");
     link.href = `#${first.id}`;
     link.textContent = text;
-    link.addEventListener("click", (event) => { event.preventDefault(); first.focus(); });
+    link.addEventListener("click", (event) => {
+      event.preventDefault();
+      first.focus();
+    });
     item.append(link);
     list.append(item);
   });
@@ -165,7 +190,8 @@ function showErrors(form, error) {
 function checkForm(form) {
   const fields = {};
   Array.from(form.elements).forEach((input) => {
-    if (input.name && input.willValidate && !input.validity.valid) fields[input.name] = input.validationMessage;
+    if (input.name && input.willValidate && !input.validity.valid)
+      fields[input.name] = input.validationMessage;
   });
   if (Object.keys(fields).length) {
     showErrors(form, { message: "Check these details before continuing.", fields });
@@ -189,7 +215,16 @@ async function submitStep(event, path, method, next) {
   let succeeded = false;
   try {
     const data = Object.fromEntries(new FormData(form));
+    if (form.id === "baseline-form") {
+      const today = new Date();
+      data.measured_on = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
+      data.record_weight = !state.user?.profile || state.weightEdited;
+    }
     await api(path, method, data);
+    if (form.id === "baseline-form") {
+      state.weightEdited = false;
+      $("#weight").value = displayedWeight(state.user.profile);
+    }
     succeeded = true;
     $("#status").textContent = "Your details have been saved.";
     if (form.id === "account-form") {
@@ -198,7 +233,8 @@ async function submitStep(event, path, method, next) {
     }
   } catch (error) {
     if (error.name === "TimeoutError" || error instanceof TypeError) {
-      error.message = "We couldn’t confirm the save. Check your connection, then try again. If you just created an account, you can also sign in.";
+      error.message =
+        "We couldn’t confirm the save. Check your connection, then try again. If you just created an account, you can also sign in.";
     }
     showErrors(form, error);
   } finally {
@@ -207,7 +243,8 @@ async function submitStep(event, path, method, next) {
     button.innerHTML = original;
     form.removeAttribute("aria-busy");
   }
-  if (succeeded && form.id === "account-form" && state.login && state.user?.onboarding_completed_at) window.location.assign("/home");
+  if (succeeded && form.id === "account-form" && state.login && state.user?.onboarding_completed_at)
+    window.location.assign("/home");
   else if (succeeded) navigate(next);
 }
 
@@ -222,10 +259,15 @@ $("#unit_system").addEventListener("change", () => {
   const weight = $("#weight");
   const next = $("#unit_system").value;
   if (weight.value && state.unit !== next && Number.isFinite(Number(weight.value))) {
-    weight.value = (Number(weight.value) * (next === "imperial" ? 1 / 0.45359237 : 0.45359237)).toFixed(1);
+    weight.value = (
+      Number(weight.value) * (next === "imperial" ? 1 / 0.45359237 : 0.45359237)
+    ).toFixed(1);
   }
   state.unit = next;
   updateWeightLimits();
+});
+$("#weight").addEventListener("input", () => {
+  state.weightEdited = true;
 });
 
 $("#password-toggle").addEventListener("click", () => {
@@ -244,21 +286,37 @@ $("#account-toggle").addEventListener("click", () => {
   $("#password").minLength = state.login ? 1 : 8;
   $("#password").autocomplete = state.login ? "current-password" : "new-password";
   $("#password-hint").hidden = state.login;
-  $("#account-title").textContent = state.login ? "Good to have you back." : "A fresh start. A stronger you.";
-  $("#account-intro").textContent = state.login ? "Sign in to pick up where you left off." : "Create your account, then we’ll find a starting point that feels right for you.";
+  $("#account-title").textContent = state.login
+    ? "Good to have you back."
+    : "A fresh start. A stronger you.";
+  $("#account-intro").textContent = state.login
+    ? "Sign in to pick up where you left off."
+    : "Create your account, then we’ll find a starting point that feels right for you.";
   $("#account-submit").textContent = state.login ? "Sign in →" : "Create account ↗";
-  $("#account-toggle").textContent = state.login ? "New here? Create an account ↗" : "Already a member? Sign in ↗";
+  $("#account-toggle").textContent = state.login
+    ? "New here? Create an account ↗"
+    : "Already a member? Sign in ↗";
   clearErrors($("#account-form"));
   navigate(0, true);
 });
 
-$("#account-form").addEventListener("submit", (event) => submitStep(event, state.login ? "login" : "register", "POST", state.login ? undefined : 1));
-$("#baseline-form").addEventListener("submit", (event) => submitStep(event, "onboarding/profile", "PUT", 2));
-$("#rhythm-form").addEventListener("submit", (event) => submitStep(event, "onboarding/preferences", "PUT", 3));
-$("#review-form").addEventListener("submit", (event) => submitStep(event, "onboarding/complete", "POST", 4));
+$("#account-form").addEventListener("submit", (event) =>
+  submitStep(event, state.login ? "login" : "register", "POST", state.login ? undefined : 1),
+);
+$("#baseline-form").addEventListener("submit", (event) =>
+  submitStep(event, "onboarding/profile", "PUT", 2),
+);
+$("#rhythm-form").addEventListener("submit", (event) =>
+  submitStep(event, "onboarding/preferences", "PUT", 3),
+);
+$("#review-form").addEventListener("submit", (event) =>
+  submitStep(event, "onboarding/complete", "POST", 4),
+);
 
 document.querySelectorAll("[data-go], [data-step]").forEach((button) => {
-  button.addEventListener("click", () => navigate(Number(button.dataset.go ?? button.dataset.step)));
+  button.addEventListener("click", () =>
+    navigate(Number(button.dataset.go ?? button.dataset.step)),
+  );
 });
 
 window.addEventListener("hashchange", () => {
@@ -288,12 +346,14 @@ async function boot() {
     await api("session");
     fillForms();
     $("#setup").hidden = false;
-    if (!state.user && new URLSearchParams(location.search).get("login") === "1") $("#account-toggle").click();
+    if (!state.user && new URLSearchParams(location.search).get("login") === "1")
+      $("#account-toggle").click();
     const requested = stages.indexOf(window.location.hash.slice(1));
     navigate(requested < 0 ? highestStage() : requested, true, false);
     $("#boot").hidden = true;
   } catch {
-    $("#boot").textContent = "We couldn’t load your starting point. Check your connection and reload to try again.";
+    $("#boot").textContent =
+      "We couldn’t load your starting point. Check your connection and reload to try again.";
     const retry = document.createElement("button");
     retry.className = "text-button";
     retry.type = "button";

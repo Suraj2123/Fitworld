@@ -41,12 +41,18 @@ def create_app(test_config=None, *, instance_path=None):
     app.register_blueprint(bp)
     from .app_api import bp as app_api
     from .views import bp as pages
+
     app.register_blueprint(app_api)
     app.register_blueprint(pages)
 
     @app.before_request
     def protect_writes():
-        if request.path.startswith("/api/") and request.method in {"POST", "PUT", "PATCH", "DELETE"}:
+        if request.path.startswith("/api/") and request.method in {
+            "POST",
+            "PUT",
+            "PATCH",
+            "DELETE",
+        }:
             expected = session.get("csrf_token")
             provided = request.headers.get("X-CSRF-Token", "")
             if not expected or not secrets.compare_digest(expected, provided):
@@ -73,6 +79,7 @@ def create_app(test_config=None, *, instance_path=None):
     @app.get("/")
     def index():
         from .api import current_user
+
         user = current_user()
         if user and user["onboarding_completed_at"] and request.args.get("setup") != "1":
             return redirect("/home")

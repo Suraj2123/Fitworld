@@ -2,6 +2,27 @@
 
 import math
 import re
+from datetime import date, datetime, timedelta, timezone
+
+
+def iso_date(value, field="date", historical=False):
+    """Validate an explicit local calendar date, without converting it to UTC."""
+    try:
+        if not isinstance(value, str):
+            raise ValueError
+        parsed = date.fromisoformat(value)
+        if parsed.isoformat() != value or not 1900 <= parsed.year <= 2100:
+            raise ValueError
+        if historical and parsed > datetime.now(timezone.utc).date() + timedelta(days=1):
+            raise ValueError
+        return value
+    except (ValueError, TypeError):
+        message = (
+            "Choose a valid date from 1900–2100 (YYYY-MM-DD)."
+            if not historical
+            else "Choose a valid date for an entry that has already happened (1900–2100)."
+        )
+        raise ValidationError({field: message}) from None
 
 
 class ValidationError(Exception):
@@ -77,15 +98,23 @@ def profile(data):
     form = Form(data)
     age = form.number("age", "age", 13, 120, integer=True)
     kg, unit = body_weight(form)
-    experience = form.choice("experience_level", {"beginner", "intermediate", "advanced"}, "your experience level")
-    current = form.number("current_workouts_per_week", "current weekly workouts", 0, 7, integer=True)
+    experience = form.choice(
+        "experience_level", {"beginner", "intermediate", "advanced"}, "your experience level"
+    )
+    current = form.number(
+        "current_workouts_per_week", "current weekly workouts", 0, 7, integer=True
+    )
     form.finish()
     return age, kg, unit, experience, current
 
 
 def preferences(data):
     form = Form(data)
-    goal = form.choice("primary_goal", {"get_active", "build_strength", "improve_endurance", "improve_mobility"}, "a goal")
+    goal = form.choice(
+        "primary_goal",
+        {"get_active", "build_strength", "improve_endurance", "improve_mobility"},
+        "a goal",
+    )
     location = form.choice("training_location", {"home", "gym", "outdoors"}, "a workout location")
     days = form.number("target_days_per_week", "weekly workout days", 1, 7, integer=True)
     minutes = form.number("session_minutes", "session length", 15, 90, integer=True)

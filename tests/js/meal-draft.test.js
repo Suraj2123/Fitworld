@@ -1,11 +1,21 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { mealTotals } from "../fitworld/static/js/meal-draft.js";
+import { mealTotals } from "../../fitworld/static/js/meal-draft.js";
 
 test("meal preview multiplies fractional servings and separates unknown from zero", () => {
   const totals = mealTotals([
-    { servings: "2", calories_per_serving: "150", protein_g_per_serving: "5", sodium_mg_per_serving: "0" },
-    { servings: "0.5", calories_per_serving: "100", protein_g_per_serving: "", sodium_mg_per_serving: null },
+    {
+      servings: "2",
+      calories_per_serving: "150",
+      protein_g_per_serving: "5",
+      sodium_mg_per_serving: "0",
+    },
+    {
+      servings: "0.5",
+      calories_per_serving: "100",
+      protein_g_per_serving: "",
+      sodium_mg_per_serving: null,
+    },
   ]);
   assert.equal(totals[0].total, 350);
   assert.equal(totals[0].missing, 0);
