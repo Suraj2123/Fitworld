@@ -95,3 +95,21 @@ Browsers can clear or disallow storage. Ordinary logging remains usable if recov
 is unavailable. Catalog/scheduled workout edits, automatic nutrition targets,
 custom-workout building, and photo analysis are outside this change. Updates use
 the last submitted valid values; there is no multi-device conflict-resolution UI.
+
+
+## November 20: reuse manual workouts
+
+Home's manual workout cards now offer **Use as new workout**. This copies the
+name, duration, completion status, notes, and optional calorie estimate into the
+manual form. Choose a destination with the existing day controls, adjust the
+values, then select **Add workout**. The request creates a new log; the source ID,
+original date, and schedule associations are not copied. Blank calorie estimates
+stay unknown. Nothing is saved until the form is submitted.
+
+An unfinished draft or active edit cannot be overwritten by reuse. Clear the
+workout form before loading another. Failed saves retain the copied draft. Catalog
+and scheduled workouts do not offer this manual shortcut. No migration is needed.
+
+Demo: copy a ten-minute partial walk from yesterday, choose today, change it to
+25 minutes and mark it completed, then save. Yesterday's partial walk remains
+unchanged while today's new entry contributes to today's totals and weekly goal.

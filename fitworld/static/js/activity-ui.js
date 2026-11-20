@@ -1,6 +1,6 @@
 import { el, empty, number, mass, badge, removeEntry } from "./client.js";
 
-export function renderWorkouts(container, data, onEdit) {
+export function renderWorkouts(container, data, onEdit, onReuse) {
   container.replaceChildren();
   if (!data.workouts.length)
     return empty(container, "A fresh page. Log your first workout whenever you’re ready.");
@@ -36,17 +36,26 @@ export function renderWorkouts(container, data, onEdit) {
       card.append(details);
     }
     if (
-      onEdit &&
+      (onEdit || onReuse) &&
       workout.workout_id === null &&
       !workout.scheduled_workout_id &&
       !workout.exercises.length &&
       !workout.muscle_groups.length
     ) {
-      const edit = el("button", "text-button", "Edit workout");
-      edit.type = "button";
-      edit.setAttribute("aria-label", `Edit ${workout.workout_name}`);
-      edit.addEventListener("click", () => onEdit(workout));
-      card.append(edit);
+      if (onEdit) {
+        const edit = el("button", "text-button", "Edit workout");
+        edit.type = "button";
+        edit.setAttribute("aria-label", `Edit ${workout.workout_name}`);
+        edit.addEventListener("click", () => onEdit(workout));
+        card.append(edit);
+      }
+      if (onReuse) {
+        const reuse = el("button", "text-button", "Use as new workout");
+        reuse.type = "button";
+        reuse.setAttribute("aria-label", `Use ${workout.workout_name} as a new workout`);
+        reuse.addEventListener("click", () => onReuse(workout));
+        card.append(reuse);
+      }
     }
     const remove = el("button", "text-button remove-entry", "Remove workout");
     remove.type = "button";

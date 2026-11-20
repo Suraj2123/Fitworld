@@ -131,6 +131,73 @@ const assert = require("node:assert/strict");
   assert((await page.locator("#today-workouts").innerText()).includes("Stopped for rain"));
   assert.equal(await page.locator("#today-workouts .entry-card").count(), 1);
 
+  // Reuse copies a manual log into a new draft and preserves both source and unfinished input.
+  const sourceDay = await (
+    await context.request.get(base + "/api/activity?date=2026-01-04")
+  ).json();
+  const sourceWorkout = sourceDay.workouts[0];
+  await page.locator("#workout-name").fill("Unfinished workout");
+  const reuseWorkout = page.getByRole("button", { name: "Use Walk as a new workout", exact: true });
+  await reuseWorkout.click();
+  assert.equal(await page.locator("#workout-name").inputValue(), "Unfinished workout");
+  await page.getByRole("button", { name: "Clear workout", exact: true }).click();
+  await reuseWorkout.focus();
+  await page.keyboard.press("Enter");
+  assert.equal(await page.locator("#workout-name").inputValue(), "Walk");
+  assert.equal(await page.locator("#workout-minutes").inputValue(), "10");
+  assert.equal(await page.locator("#manual-workout-status").inputValue(), "partial");
+  assert.equal(await page.locator("#manual-notes").inputValue(), "Stopped for rain");
+  assert.equal(await page.locator("#manual-calories").inputValue(), "");
+  assert.equal(await page.locator('#workout-form [type="submit"]').innerText(), "Add workout");
+  assert.equal(
+    await page.locator("#workout-name").evaluate((el) => el === document.activeElement),
+    true,
+  );
+  await page.locator("#previous-day").click();
+  await page.locator("#workout-minutes").fill("25");
+  await page.route("**/api/activity/workouts", (route) =>
+    route.fulfill({
+      status: 422,
+      contentType: "application/json",
+      body: JSON.stringify({ error: "Test rejected copy" }),
+    }),
+  );
+  await page.locator('#workout-form [type="submit"]').click();
+  await page.waitForSelector("#workout-form .form-error:not([hidden])");
+  assert.equal(await page.locator("#workout-minutes").inputValue(), "25");
+  await page.unroute("**/api/activity/workouts");
+  await page.locator('#workout-form [type="submit"]').click();
+  await page.waitForFunction(() => document.querySelector("#workout-total").textContent === "25");
+  const copyDay = await (await context.request.get(base + "/api/activity?date=2026-01-03")).json();
+  assert.equal(copyDay.workouts.length, 1);
+  assert.notEqual(copyDay.workouts[0].id, sourceWorkout.id);
+  assert.equal(copyDay.workouts[0].duration_seconds, 1500);
+  assert.equal(copyDay.workouts[0].status, "partial");
+  assert.equal(copyDay.workouts[0].estimated_calories, null);
+  assert.deepEqual(
+    (await (await context.request.get(base + "/api/activity?date=2026-01-04")).json()).workouts[0],
+    sourceWorkout,
+  );
+  await page.locator("#next-day").click();
+  await page.waitForFunction(() => document.querySelector("#workout-total").textContent === "10");
+  // Catalog logs never offer the manual-copy action.
+  const catalog = await (await context.request.get(base + "/api/workouts")).json();
+  await write("activity/workouts", {
+    workout_id: catalog.workouts[0].id,
+    performed_on: "2026-01-04",
+    duration_minutes: 20,
+    status: "completed",
+  });
+  await page.reload();
+  await page.waitForSelector("#today-workouts .entry-card");
+  assert.equal(
+    await page
+      .locator("#today-workouts")
+      .getByRole("button", { name: /as a new workout/ })
+      .count(),
+    1,
+  );
+
   await page.getByText("Find previous meals", { exact: true }).click();
   await page.locator("#meal-search-category").selectOption("breakfast");
   await page.getByRole("button", { name: "Search meals", exact: true }).click();
