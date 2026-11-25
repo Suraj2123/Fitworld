@@ -60,8 +60,12 @@
         <h2 id="exercise-guides-heading">Explore exercise guides</h2>
       </div>
       <div class="button-row">
-          <button type="button" class="secondary-button" id="open-create-exercise">＋ Add exercise</button>
-          <button type="button" class="primary-button" id="open-create-workout">＋ Create workout</button>
+        <button type="button"
+                class="secondary-button"
+                id="open-create-exercise">＋ Add exercise</button>
+        <button type="button"
+                class="primary-button"
+                id="open-create-workout">＋ Create workout</button>
       </div>
     </div>
     <p class="small muted">Search individual movements, muscle groups, and equipment, including exercises outside the starter routines.</p>
@@ -129,9 +133,17 @@
       <label for="exercise-description">Description</label>
       <textarea id="exercise-description" name="description" maxlength="500"></textarea>
       <label for="exercise-muscle-group">Muscle group</label>
-      <input type="text" id="exercise-muscle-group" name="muscle_group" maxlength="100" required>
+      <input type="text"
+             id="exercise-muscle-group"
+             name="muscle_group"
+             maxlength="100"
+             required>
       <label for="exercise-equipment">Equipment</label>
-      <input type="text" id="exercise-equipment" name="equipment" maxlength="100" required>
+      <input type="text"
+             id="exercise-equipment"
+             name="equipment"
+             maxlength="100"
+             required>
       <button type="submit" class="primary-button">Save exercise</button>
     </form>
   </dialog>
@@ -148,9 +160,19 @@
       <label for="workout-description">Description</label>
       <textarea id="workout-description" name="description" maxlength="500"></textarea>
       <label for="workout-intensity">Intensity (1–10)</label>
-      <input type="number" id="workout-intensity" name="intensity" min="1" max="10" required>
+      <input type="number"
+             id="workout-intensity"
+             name="intensity"
+             min="1"
+             max="10"
+             required>
       <label for="workout-minutes">Estimated minutes</label>
-      <input type="number" id="workout-minutes" name="estimated_minutes" min="15" max="90" required>
+      <input type="number"
+             id="workout-minutes"
+             name="estimated_minutes"
+             min="15"
+             max="90"
+             required>
       <label for="workout-category">Category</label>
       <select id="workout-category" name="category">
         <option value="strength">Strength</option>
