@@ -197,4 +197,67 @@ async function boot() {
   await refreshPlans();
   initWorkoutLogging(allWorkouts);
 }
+
+// Open/close create exercise dialog
+$("#open-create-exercise").addEventListener("click", () => {
+  $("#create-exercise-form").reset();
+  $("#create-exercise-form .form-error").hidden = true;
+  $("#create-exercise-dialog").showModal();
+});
+
+// Submit create exercise form
+$("#create-exercise-form").addEventListener("submit", (event) =>
+  saveForm(event, async (data) => {
+    await api("exercises", "POST", data);
+    $("#create-exercise-dialog").close();
+    notify("Exercise added to your library.");
+    refreshPlans().catch(showError);
+  }),
+);
+
+// Open/close create workout dialog
+$("#open-create-workout").addEventListener("click", () => {
+  $("#create-workout-form").reset();
+  $("#workout-exercises-list").replaceChildren();
+  $("#create-workout-form .form-error").hidden = true;
+  $("#create-workout-dialog").showModal();
+});
+
+// Add exercise row to workout form
+$("#add-exercise-row").addEventListener("click", () => {
+  const row = el("div", "exercise-row");
+  const select = el("select");
+  allExercises.forEach((exercise) => {
+    const option = document.createElement("option");
+    option.value = exercise.id;
+    option.textContent = exercise.name;
+    select.append(option);
+  });
+  row.append(
+    select,
+    Object.assign(el("input"), { type: "number", placeholder: "Sets", min: 1, max: 100 }),
+    Object.assign(el("input"), { type: "number", placeholder: "Reps", min: 1, max: 10000 }),
+    Object.assign(el("input"), { type: "number", placeholder: "Seconds", min: 1, max: 86400 }),
+  );
+  $("#workout-exercises-list").append(row);
+});
+
+// Submit create workout form
+$("#create-workout-form").addEventListener("submit", (event) =>
+  saveForm(event, async (data) => {
+    const exercises = [...document.querySelectorAll(".exercise-row")].map((row) => {
+      const [select, sets, reps, seconds] = row.children;
+      return {
+        exercise_id: Number(select.value),
+        suggested_sets: Number(sets.value),
+        suggested_reps: reps.value ? Number(reps.value) : null,
+        suggested_seconds: seconds.value ? Number(seconds.value) : null,
+      };
+    });
+    await api("workouts/custom", "POST", { ...data, exercises });
+    $("#create-workout-dialog").close();
+    notify("Workout saved to your library.");
+    refreshPlans().catch(showError);
+  }),
+);
 boot().catch(showError);

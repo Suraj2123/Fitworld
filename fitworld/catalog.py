@@ -5,7 +5,7 @@ from datetime import date, timedelta
 
 from werkzeug.exceptions import BadRequest, NotFound
 
-from .validation import ValidationError
+from .validation import Form, ValidationError
 
 GOAL_CATEGORIES = {
     "get_active": "mixed",
@@ -435,11 +435,49 @@ def create_exercise(connection, user_id, name, description, muscle_group, equipm
 
 def create_workout(connection, user_id, name, description, intensity, minutes, category, exercises):
     try:
+        # Validation check for each exercise before creating workout
+        for item in exercises:
+            # Check each exercise is a dictionary, with unique elements like exercise_id, suggested_sets, etc.
+            if not isinstance(item, dict):
+                raise ValidationError({"exercises": "Each exercises requires a description."})
+            
+            entry = Form(item)
+            # Exercise_id passes in 2**53 as maxmimum since JavaScript can't handle higher integers
+            exercise_id = entry.number("exercise_id", "exercise", 1, 2**53, integer=True)
+            # sets will not be higher than 100
+            suggested_sets = entry.number("suggested_sets", "sets", 1, 100, integer=True)
+            suggested_reps = (
+                # reps will not be higher than 10000
+                entry.number("suggested_reps", "reps", 1, 10000, integer=True)
+                if item.get("suggested_reps") is not None
+                else None
+            )
+            suggested_seconds = (
+                # 86400 seconds in the day - prevent suggested seconds from taking longer than a day
+                entry.number("suggested_seconds", "seconds", 1, 86400, integer=True)
+                if item.get("suggested_seconds") is not None
+                else None
+            )
+
+            # Store error from suggested_reps and/or suggested_seconds into entry.errors
+            if item.get("suggested_reps") is None and item.get("suggested_seconds") is None:
+                entry.errors["exercises"] = "Each exercise needs either reps or a duration."
+
+            entry.finish()
+
+            # Verify exercise exists and belongs to this user or the catalog
+            exercise = connection.execute(
+                "SELECT id FROM exercises WHERE id = ? AND (user_id IS NULL OR user_id = ?)",
+                (exercise_id, user_id),
+            ).fetchone()
+            if exercise is None:
+                raise ValidationError({"exercises": "Choose exercises from your library or the catalog."})
+
+        # Insert valid workouts into database
         cursor = connection.execute(
             "INSERT INTO workouts (name, description, intensity, estimated_minutes, category, user_id) VALUES (?, ?, ?, ?, ?, ?)",
             (name, description, intensity, minutes, category, user_id),
         )
-        # connection.commit()
         workout_id = cursor.lastrowid
 
         # Add exercises into workout_exercises

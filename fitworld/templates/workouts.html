@@ -59,6 +59,10 @@
         <p class="eyebrow">GET TO KNOW THE MOVEMENTS</p>
         <h2 id="exercise-guides-heading">Explore exercise guides</h2>
       </div>
+      <div class="button-row">
+          <button type="button" class="secondary-button" id="open-create-exercise">＋ Add exercise</button>
+          <button type="button" class="primary-button" id="open-create-workout">＋ Create workout</button>
+      </div>
     </div>
     <p class="small muted">Search individual movements, muscle groups, and equipment, including exercises outside the starter routines.</p>
     <div class="card-grid" id="exercise-guides"></div>
@@ -110,6 +114,54 @@
       <p class="small muted">Plans follow Monday–Sunday weeks. Sessions before your start date are omitted. Choosing a new plan replaces your active routine and skips its remaining planned sessions.</p>
       <button type="submit"
               class="primary-button">Choose this routine <span aria-hidden="true">✓</span></button>
+    </form>
+  </dialog>
+  <!-- Create exercise dialog -->
+  <dialog id="create-exercise-dialog" aria-labelledby="create-exercise-title">
+    <div class="dialog-header">
+      <h2 id="create-exercise-title">Add a custom exercise.</h2>
+      <button type="button" class="icon-button" data-close aria-label="Close">×</button>
+    </div>
+    <form id="create-exercise-form">
+      <div class="form-error error-box" role="alert" tabindex="-1" hidden></div>
+      <label for="exercise-name">Name</label>
+      <input type="text" id="exercise-name" name="name" maxlength="100" required>
+      <label for="exercise-description">Description</label>
+      <textarea id="exercise-description" name="description" maxlength="500"></textarea>
+      <label for="exercise-muscle-group">Muscle group</label>
+      <input type="text" id="exercise-muscle-group" name="muscle_group" maxlength="100" required>
+      <label for="exercise-equipment">Equipment</label>
+      <input type="text" id="exercise-equipment" name="equipment" maxlength="100" required>
+      <button type="submit" class="primary-button">Save exercise</button>
+    </form>
+  </dialog>
+  <!-- Create workout dialog -->
+  <dialog id="create-workout-dialog" aria-labelledby="create-workout-title">
+    <div class="dialog-header">
+      <h2 id="create-workout-title">Build a custom workout.</h2>
+      <button type="button" class="icon-button" data-close aria-label="Close">×</button>
+    </div>
+    <form id="create-workout-form">
+      <div class="form-error error-box" role="alert" tabindex="-1" hidden></div>
+      <label for="workout-name">Name</label>
+      <input type="text" id="workout-name" name="name" maxlength="100" required>
+      <label for="workout-description">Description</label>
+      <textarea id="workout-description" name="description" maxlength="500"></textarea>
+      <label for="workout-intensity">Intensity (1–10)</label>
+      <input type="number" id="workout-intensity" name="intensity" min="1" max="10" required>
+      <label for="workout-minutes">Estimated minutes</label>
+      <input type="number" id="workout-minutes" name="estimated_minutes" min="15" max="90" required>
+      <label for="workout-category">Category</label>
+      <select id="workout-category" name="category">
+        <option value="strength">Strength</option>
+        <option value="cardio">Cardio</option>
+        <option value="mobility">Mobility</option>
+        <option value="recovery">Recovery</option>
+        <option value="mixed">Mixed</option>
+      </select>
+      <div id="workout-exercises-list"></div>
+      <button type="button" class="secondary-button" id="add-exercise-row">＋ Add exercise</button>
+      <button type="submit" class="primary-button">Save workout</button>
     </form>
   </dialog>
 {% endblock %}
