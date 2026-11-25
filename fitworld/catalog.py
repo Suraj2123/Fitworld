@@ -440,7 +440,7 @@ def create_workout(connection, user_id, name, description, intensity, minutes, c
             # Check each exercise is a dictionary, with unique elements like exercise_id, suggested_sets, etc.
             if not isinstance(item, dict):
                 raise ValidationError({"exercises": "Each exercises requires a description."})
-            
+
             entry = Form(item)
             # Exercise_id passes in 2**53 as maxmimum since JavaScript can't handle higher integers
             exercise_id = entry.number("exercise_id", "exercise", 1, 2**53, integer=True)
@@ -472,7 +472,9 @@ def create_workout(connection, user_id, name, description, intensity, minutes, c
                 (exercise_id, user_id),
             ).fetchone()
             if exercise is None:
-                raise ValidationError({"exercises": "Choose exercises from your library or the catalog."})
+                raise ValidationError(
+                    {"exercises": "Choose exercises from your library or the catalog."}
+                )
 
         # Insert valid workouts into database
         cursor = connection.execute(
