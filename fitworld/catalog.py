@@ -445,7 +445,8 @@ def create_workout(connection, user_id, name, description, intensity, minutes, c
             # Exercise_id passes in 2**53 as maxmimum since JavaScript can't handle higher integers
             exercise_id = entry.number("exercise_id", "exercise", 1, 2**53, integer=True)
             # sets will not be higher than 100
-            suggested_sets = entry.number("suggested_sets", "sets", 1, 100, integer=True)
+            # SETS WILL NOT BE USED
+            # suggested_sets = entry.number("suggested_sets", "sets", 1, 100, integer=True)
             suggested_reps = (
                 # reps will not be higher than 10000
                 entry.number("suggested_reps", "reps", 1, 10000, integer=True)
