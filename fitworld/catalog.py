@@ -460,7 +460,7 @@ def create_workout(connection, user_id, name, description, intensity, minutes, c
             )
 
             # Store error from suggested_reps and/or suggested_seconds into entry.errors
-            if item.get("suggested_reps") is None and item.get("suggested_seconds") is None:
+            if suggested_reps is None and suggested_seconds is None:
                 entry.errors["exercises"] = "Each exercise needs either reps or a duration."
 
             entry.finish()
